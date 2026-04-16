@@ -1,0 +1,92 @@
+import { COUNTRY_FLAGS, type Scheme } from '@/types'
+
+interface Props {
+  scheme: Scheme
+  index: number
+  userVote?: 'works' | 'broken' | null
+  onVote: (schemeId: string, vote: 'works' | 'broken') => void
+}
+
+export default function SchemeCard({ scheme, index, userVote, onVote }: Props) {
+  const months = ['ЯНВ','ФЕВ','МАР','АПР','МАЙ','ИЮН','ИЮЛ','АВГ','СЕН','ОКТ','НОЯ','ДЕК']
+  const d = new Date(scheme.verified_at)
+  const dateTag = `${months[d.getMonth()]} ${d.getFullYear()}`
+
+  return (
+    <div
+      className="border rounded overflow-hidden mb-2 transition-colors duration-150"
+      style={{
+        borderColor: 'var(--border)',
+        animation: `cardIn 0.28s cubic-bezier(0.16,1,0.3,1) ${0.04 * (index + 1)}s both`,
+      }}
+    >
+      <div className="flex items-center justify-between px-3.5 py-2.5 border-b" style={{ borderColor: 'var(--border)' }}>
+        <div className="flex items-center gap-2">
+          <span className="text-[17px]" style={{ letterSpacing: 2 }}>
+            {COUNTRY_FLAGS[scheme.from_country]}{scheme.duration_hours && scheme.duration_hours > 48 ? '✈️' : '→'}{COUNTRY_FLAGS[scheme.to_country]}
+          </span>
+          {scheme.border_crossing && (
+            <span className="font-mono text-[10px] border rounded px-1.5 py-0.5" style={{ color: 'var(--text2)', borderColor: 'var(--border)' }}>
+              {scheme.border_crossing}
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-1 text-[13px] font-medium" style={{ color: 'var(--text2)' }}>
+          <span className="w-1 h-1 rounded-full" style={{ background: 'var(--text3)' }} />
+          {scheme.works_count}
+        </div>
+      </div>
+
+      <div className="px-3.5 py-2.5">
+        <p className="font-mono text-[11px] leading-[1.8] mb-2" style={{ color: 'var(--text2)' }}>
+          {scheme.description}
+        </p>
+
+        {scheme.tip && (
+          <div
+            className="border-l-2 pl-2.5 py-1.5 rounded-r font-mono text-[10px] leading-[1.6] mb-2"
+            style={{ borderColor: 'var(--border)', color: 'var(--text3)', background: 'var(--bg3)' }}
+          >
+            {scheme.tip}
+          </div>
+        )}
+
+        <div className="flex gap-1.5 flex-wrap mb-2.5">
+          {scheme.cost_usd && <Tag>~${scheme.cost_usd}</Tag>}
+          {scheme.duration_hours && <Tag>~{scheme.duration_hours > 48 ? `${Math.round(scheme.duration_hours / 24)} дн` : `${scheme.duration_hours}ч`}</Tag>}
+          <Tag>{dateTag}</Tag>
+        </div>
+
+        <div className="flex gap-1.5 pt-2.5 border-t" style={{ borderColor: 'var(--border)' }}>
+          <VoteBtn emoji="👍" count={scheme.works_count} active={userVote === 'works'} type="works" onClick={() => onVote(scheme.id, 'works')} />
+          <VoteBtn emoji="👎" count={scheme.broken_count} active={userVote === 'broken'} type="broken" onClick={() => onVote(scheme.id, 'broken')} />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function Tag({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="font-mono text-[9px] border rounded px-1.5 py-0.5" style={{ color: 'var(--text3)', borderColor: 'var(--border)' }}>
+      {children}
+    </span>
+  )
+}
+
+function VoteBtn({ emoji, count, active, type, onClick }: { emoji: string; count: number; active: boolean; type: 'works' | 'broken'; onClick: () => void }) {
+  const isNo = type === 'broken'
+  return (
+    <button
+      onClick={onClick}
+      className="flex-1 border rounded py-1.5 flex items-center justify-center gap-1 text-xs font-medium transition-all duration-150"
+      style={{
+        borderColor: active ? (isNo ? 'var(--alert-dot)' : 'var(--text3)') : 'var(--border)',
+        color: active ? (isNo ? 'var(--alert-dot)' : 'var(--text2)') : 'var(--text3)',
+        background: active ? (isNo ? 'var(--alert-bg)' : 'var(--bg3)') : 'transparent',
+      }}
+    >
+      {emoji} <span>{count}</span>
+    </button>
+  )
+}
