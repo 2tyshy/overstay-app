@@ -2,7 +2,7 @@
 // Used for both chat and vision OCR of passport stamps / visa stickers.
 
 const LS_USER_KEY = 'overstay_gemini_key'
-const MODEL = 'gemini-2.0-flash'
+const MODEL = 'gemini-2.5-flash'
 const BASE = 'https://generativelanguage.googleapis.com/v1beta/models'
 
 /**
