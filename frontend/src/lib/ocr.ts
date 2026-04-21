@@ -24,23 +24,26 @@ function visaLabels(country: string): string[] {
   return data.visa_options.map(o => o.label)
 }
 
-const PROMPT = `You are a passport/visa OCR assistant. The image shows either a passport entry stamp or a visa sticker/e-visa.
+const PROMPT = `You are a passport/visa OCR assistant. The image shows a passport entry stamp, visa sticker, or e-visa document.
 
-Extract the following fields and return ONLY valid JSON, no prose:
+Extract these fields and return ONLY valid JSON, no prose, no markdown fences:
 {
-  "country": "ISO-2 code, uppercase, from this whitelist: ${SUPPORTED}. Use the country that ISSUED the stamp/visa. If unclear, omit.",
-  "entry_date": "YYYY-MM-DD. The ENTRY date for stamps, or the VISA VALID FROM date for stickers. If not visible, omit.",
-  "visa_type": "Short lowercase label, e.g. 'e-visa 90', 'dtv 180', 'visa on arrival 30', 'exemption 30'. If unclear, omit.",
-  "max_days": "Integer — max duration in days as printed. Omit if absent.",
-  "confidence": "low | medium | high — your confidence across all fields combined",
-  "notes": "Optional: one short sentence if something is ambiguous or worth flagging"
+  "country": "ISO-2 code, uppercase. Pick from this whitelist: ${SUPPORTED}. Use the country that ISSUED the stamp/visa. Examples: Vietnam→VN, Thailand→TH, Cambodia→KH, Indonesia→ID. Omit only if truly unreadable.",
+  "entry_date": "YYYY-MM-DD. The ENTRY date for stamps (when person entered country), or VISA VALID FROM date for stickers. Convert DD/MM/YY and DD-MMM-YYYY formats. Omit only if date unreadable.",
+  "visa_type": "Short lowercase label. Examples: 'e-visa 90', 'dtv 180', 'visa on arrival 30', 'exemption 30', 'tourist visa 60'. For entry stamps without sticker, use 'stamp' + duration if known. Omit if truly no type info.",
+  "max_days": "Integer — max duration in days if printed (e.g., '90 days' → 90). Omit if absent.",
+  "confidence": "low | medium | high — overall confidence",
+  "notes": "Optional short note about ambiguity, or which stamp you picked if multiple visible"
 }
 
 Rules:
-- Never invent fields you can't read. It's better to omit than guess.
-- Thai stamps often show day/month in roman numerals — convert to Gregorian.
-- Ignore month names in non-English languages; convert to numeric.
-- If the image is NOT a passport stamp or visa, return {"confidence": "low", "notes": "not a visa document"}`
+- If MULTIPLE stamps are visible, pick the MOST RECENT or CLEAREST one and mention this in notes.
+- For Vietnamese stamps: "entry" is typically the LEFT stamp, "exit" the right. "Permitted to remain until" is the deadline, not entry.
+- Thai stamps use Buddhist calendar (2568 = 2025). Convert: BE year minus 543 = CE year.
+- Cambodian e-visas say "Valid from" — use that as entry_date.
+- Cyrillic/Chinese/Arabic text: transliterate what you can; prefer dates/numbers.
+- If image is NOT a visa document: return {"confidence": "low", "notes": "not a visa document"}
+- BETTER to return a best-guess with medium confidence than all-null with medium. If you can read ANY fields, fill them.`
 
 export interface OcrProgress {
   stage: 'reading' | 'analyzing' | 'parsing' | 'done'

@@ -216,6 +216,26 @@ export default function CameraSheet({ open, onClose, onApply, onNeedApiKey }: Pr
             )}
           </div>
 
+          {!result.country && !result.entry_date && !result.visa_type && result.raw && (
+            <details
+              className="p-3 rounded-[10px] border"
+              style={{ background: 'var(--alert-bg)', borderColor: 'var(--alert-border)' }}
+            >
+              <summary className="font-mono text-[10px] cursor-pointer" style={{ color: 'var(--alert-text)' }}>
+                Ничего не распозналось · показать ответ Gemini
+              </summary>
+              <pre
+                className="font-mono text-[9px] mt-2 overflow-auto max-h-40 whitespace-pre-wrap"
+                style={{ color: 'var(--text2)' }}
+              >
+                {result.raw}
+              </pre>
+              <div className="font-mono text-[9px] mt-2" style={{ color: 'var(--text3)' }}>
+                Попробуй чётче фото: только один штамп в кадре, без бликов, прямо сверху.
+              </div>
+            </details>
+          )}
+
           <div className="grid grid-cols-2 gap-2 mt-4">
             <button
               onClick={reset}

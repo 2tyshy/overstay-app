@@ -168,7 +168,10 @@ export default function App() {
     }
   }, [editEntry, passport, showToast])
 
-  const handlePdfExport = useCallback(() => {
+  // Copy a text snapshot of all entries to clipboard. We avoid the blob+download
+  // approach because Telegram iOS WebView hijacks the navigation and leaves the
+  // user stuck in a text viewer with no way back to the app.
+  const handlePdfExport = useCallback(async () => {
     const current = sorted[0]
     const lines = [
       'OVERSTAY — Visa Status Export',
@@ -185,14 +188,28 @@ export default function App() {
         `${e.country} | ${e.visa_type} | Entry: ${e.entry_date} | Deadline: ${e.deadline}`
       ),
     ]
-    const blob = new Blob([lines.join('\n')], { type: 'text/plain' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `overstay-${new Date().toISOString().split('T')[0]}.txt`
-    a.click()
-    URL.revokeObjectURL(url)
-    showToast('Файл экспортирован')
+    const text = lines.join('\n')
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(text)
+        showToast('Скопировано в буфер обмена')
+        return
+      }
+    } catch { /* fall through to legacy path */ }
+    // Legacy fallback for older WebViews without Clipboard API
+    try {
+      const ta = document.createElement('textarea')
+      ta.value = text
+      ta.style.position = 'fixed'
+      ta.style.opacity = '0'
+      document.body.appendChild(ta)
+      ta.select()
+      document.execCommand('copy')
+      document.body.removeChild(ta)
+      showToast('Скопировано в буфер обмена')
+    } catch {
+      showToast('Не удалось скопировать')
+    }
   }, [sorted, passport, showToast])
 
   const handleRefresh = useCallback(() => {

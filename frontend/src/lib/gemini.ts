@@ -107,7 +107,7 @@ export async function visionExtract(imageBase64: string, mimeType: string, promp
         ],
       },
     ],
-    generationConfig: { temperature: 0, maxOutputTokens: 400, responseMimeType: 'application/json' },
+    generationConfig: { temperature: 0, maxOutputTokens: 800, responseMimeType: 'application/json' },
   }
   return call(body)
 }
