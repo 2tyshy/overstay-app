@@ -53,15 +53,17 @@ function MiniCalendar({ entryDate, maxDays, onClose }: { entryDate: string; maxD
   }
 
   return createPortal(
-    <div className="fixed inset-0 z-[100]" onClick={onClose} style={{ background: 'rgba(0,0,0,0.35)' }}>
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+      onClick={onClose}
+      style={{ background: 'rgba(0,0,0,0.35)' }}
+    >
       <div
         ref={ref}
-        className="absolute z-50 border rounded-lg p-3 shadow-lg"
+        className="border rounded-lg p-3 shadow-lg w-full max-w-[280px]"
         style={{
           background: 'var(--bg2)',
           borderColor: 'var(--border)',
-          top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
-          width: '280px',
           animation: 'cardIn 0.2s ease-out both',
           boxShadow: '0 20px 60px rgba(0,0,0,0.35)',
         }}
