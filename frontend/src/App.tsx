@@ -12,7 +12,7 @@ import CameraSheet from '@/components/CameraSheet'
 import Toast from '@/components/Toast'
 import type { Screen, VisaEntry, PassportCountry } from '@/types'
 import { computeMaxDays } from '@/lib/visaRules'
-import { calcDeadline, calcDaysLeft, parseLocalDate, todayLocal } from '@/lib/dates'
+import { calcDeadline, calcDaysLeft, parseLocalDate, todayLocal, effectiveDeadline } from '@/lib/dates'
 import type { OcrResult } from '@/lib/ocr'
 
 const SCREEN_TITLES: Record<Screen, string> = {
@@ -118,13 +118,15 @@ export default function App() {
   useEffect(() => { localStorage.setItem(LS_PASSPORT, passport) }, [passport])
 
   // When the user switches passport, recompute max_days + deadline
-  // for entries where the rules differ (e.g. Korea).
+  // for entries where the rules differ (e.g. Korea). We also re-apply the
+  // visa_end cap so a shorter visa validity continues to bind.
   useEffect(() => {
     setEntries(prev => prev.map(entry => {
-      const newMax = computeMaxDays(entry.country, entry.visa_type, passport)
-      if (newMax === 0 || newMax === entry.max_days) return entry
-      const newDeadline = calcDeadline(entry.entry_date, newMax)
-      return { ...entry, max_days: newMax, deadline: newDeadline, days_left: calcDaysLeft(newDeadline) }
+      const newRuleMax = computeMaxDays(entry.country, entry.visa_type, passport)
+      if (newRuleMax === 0) return entry
+      const eff = effectiveDeadline(entry.entry_date, newRuleMax, entry.visa_end)
+      if (eff.maxDays === entry.max_days && eff.deadline === entry.deadline) return entry
+      return { ...entry, max_days: eff.maxDays, deadline: eff.deadline, days_left: calcDaysLeft(eff.deadline) }
     }))
   }, [passport])
 
@@ -139,12 +141,15 @@ export default function App() {
   }, [showToast])
 
   const handleSave = useCallback((data: { country: string; visa_type: string; entry_date: string; visa_start?: string; visa_end?: string }) => {
-    const maxDays = computeMaxDays(data.country, data.visa_type, passport)
-    if (maxDays === 0) {
+    const ruleMaxDays = computeMaxDays(data.country, data.visa_type, passport)
+    if (ruleMaxDays === 0) {
       showToast('Виза недоступна для этого паспорта')
       return
     }
-    const deadline = calcDeadline(data.entry_date, maxDays)
+    // visa_end (visa validity expiry) can shorten the effective stay if it's
+    // earlier than entry + ruleMaxDays. This makes the status ring + calendar
+    // reflect the real binding constraint instead of the full category rule.
+    const { deadline, maxDays } = effectiveDeadline(data.entry_date, ruleMaxDays, data.visa_end)
     const newEntry: VisaEntry = {
       id: editEntry?.id ?? genId(),
       user_id: '1',

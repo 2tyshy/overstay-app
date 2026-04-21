@@ -95,6 +95,11 @@ export async function chat(
 /**
  * Vision OCR: send an image and a structured-output prompt, get back JSON.
  * Returns the raw text — caller is responsible for JSON.parse with try/catch.
+ *
+ * thinkingBudget=0 disables Gemini 2.5 Flash's internal reasoning tokens. For
+ * structured OCR we don't need thinking, and enabling it was eating into the
+ * maxOutputTokens budget — causing truncated JSON like '{"country":"VN","entry_date":"20'
+ * with no visible error. Disabling + generous output budget fixes that.
  */
 export async function visionExtract(imageBase64: string, mimeType: string, prompt: string): Promise<string> {
   const body = {
@@ -107,7 +112,12 @@ export async function visionExtract(imageBase64: string, mimeType: string, promp
         ],
       },
     ],
-    generationConfig: { temperature: 0, maxOutputTokens: 800, responseMimeType: 'application/json' },
+    generationConfig: {
+      temperature: 0,
+      maxOutputTokens: 2048,
+      responseMimeType: 'application/json',
+      thinkingConfig: { thinkingBudget: 0 },
+    },
   }
   return call(body)
 }

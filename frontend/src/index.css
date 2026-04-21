@@ -17,6 +17,8 @@
   --alert-text: #9a7b4f; --alert-dot: #e8a85c;
   --danger-bg: #fef2f2; --danger-border: #fecaca;
   --danger-text: #b91c1c; --danger-dot: #ef4444;
+  --success-bg: #f0fdf4; --success-border: #bbf7d0;
+  --success-text: #166534; --success-dot: #22c55e;
   --ring-color: #e8a85c; --ring-track: #eeece9;
 }
 
@@ -28,6 +30,8 @@
   --alert-text: #c89545; --alert-dot: #c89545;
   --danger-bg: rgba(239,68,68,0.08); --danger-border: rgba(239,68,68,0.2);
   --danger-text: #f87171; --danger-dot: #ef4444;
+  --success-bg: rgba(34,197,94,0.08); --success-border: rgba(34,197,94,0.2);
+  --success-text: #4ade80; --success-dot: #22c55e;
   --ring-color: #c89545; --ring-track: #28282e;
 }
 

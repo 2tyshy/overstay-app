@@ -4,6 +4,7 @@ import BottomSheet from './BottomSheet'
 import { extractFromImage, type OcrResult, type OcrProgress } from '@/lib/ocr'
 import { getGeminiKey } from '@/lib/gemini'
 import { COUNTRY_FLAGS, COUNTRY_NAMES } from '@/types'
+import { COUNTRY_CODES, COUNTRY_DATA } from '@/lib/visaRules'
 
 interface Props {
   open: boolean
@@ -88,6 +89,17 @@ export default function CameraSheet({ open, onClose, onApply, onNeedApiKey }: Pr
   const apply = () => {
     if (result) onApply(result)
     handleClose()
+  }
+
+  const patchResult = (patch: Partial<OcrResult>) => {
+    setResult(prev => prev ? { ...prev, ...patch } : prev)
+  }
+
+  const canApply = !!(result && (result.country || result.entry_date || result.visa_type))
+
+  const visaOptionsForCountry = (country?: string) => {
+    if (!country) return []
+    return COUNTRY_DATA[country]?.visa_options ?? []
   }
 
   return (
@@ -193,19 +205,72 @@ export default function CameraSheet({ open, onClose, onApply, onNeedApiKey }: Pr
           )}
 
           <div
-            className="p-3 rounded-[10px] border space-y-2"
+            className="p-3 rounded-[10px] border space-y-2.5"
             style={{ background: 'var(--bg2)', borderColor: 'var(--border)' }}
           >
             <div className="flex items-center justify-between pb-2 border-b" style={{ borderColor: 'var(--border)' }}>
               <span className="font-mono text-[9px] uppercase" style={{ color: 'var(--text4)', letterSpacing: '0.12em' }}>
-                Результат
+                Проверь и дополни
               </span>
               <ConfidenceBadge conf={result.confidence} />
             </div>
-            <Row label="Страна" value={result.country ? `${COUNTRY_FLAGS[result.country] ?? '🏳️'} ${COUNTRY_NAMES[result.country] ?? result.country}` : '—'} />
-            <Row label="Дата въезда" value={result.entry_date || '—'} />
-            <Row label="Тип визы" value={result.visa_type || '—'} />
-            {result.max_days !== undefined && <Row label="Макс. дней" value={String(result.max_days)} />}
+
+            <EditRow label="Страна">
+              <select
+                value={result.country ?? ''}
+                onChange={e => {
+                  const c = e.target.value || undefined
+                  // If country changed, the old visa_type may no longer belong to the new country.
+                  // Wipe it so the user reselects from the filtered options.
+                  patchResult({ country: c, visa_type: c !== result.country ? undefined : result.visa_type })
+                }}
+                className="w-full border rounded py-2 px-2.5 font-mono text-[12px] outline-none"
+                style={selectStyle}
+              >
+                <option value="">—</option>
+                {COUNTRY_CODES.map(c => (
+                  <option key={c} value={c}>
+                    {(COUNTRY_FLAGS[c] ?? '🏳️')} {COUNTRY_NAMES[c] ?? c}
+                  </option>
+                ))}
+              </select>
+            </EditRow>
+
+            <EditRow label="Дата въезда">
+              <input
+                type="date"
+                value={result.entry_date ?? ''}
+                onChange={e => patchResult({ entry_date: e.target.value || undefined })}
+                className="w-full border rounded py-2 px-2.5 font-mono text-[12px] outline-none"
+                style={selectStyle}
+              />
+            </EditRow>
+
+            <EditRow label="Тип визы">
+              {result.country && visaOptionsForCountry(result.country).length > 0 ? (
+                <select
+                  value={result.visa_type ?? ''}
+                  onChange={e => patchResult({ visa_type: e.target.value || undefined })}
+                  className="w-full border rounded py-2 px-2.5 font-mono text-[12px] outline-none"
+                  style={selectStyle}
+                >
+                  <option value="">—</option>
+                  {visaOptionsForCountry(result.country).map(o => (
+                    <option key={o.label} value={o.label}>{o.label}</option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  type="text"
+                  value={result.visa_type ?? ''}
+                  onChange={e => patchResult({ visa_type: e.target.value || undefined })}
+                  placeholder={result.country ? 'напр. e-visa 90' : 'Сначала страну'}
+                  className="w-full border rounded py-2 px-2.5 font-mono text-[12px] outline-none"
+                  style={selectStyle}
+                />
+              )}
+            </EditRow>
+
             {result.notes && (
               <div
                 className="font-mono text-[10px] mt-2 pt-2 border-t"
@@ -222,7 +287,7 @@ export default function CameraSheet({ open, onClose, onApply, onNeedApiKey }: Pr
               style={{ background: 'var(--alert-bg)', borderColor: 'var(--alert-border)' }}
             >
               <summary className="font-mono text-[10px] cursor-pointer" style={{ color: 'var(--alert-text)' }}>
-                Ничего не распозналось · показать ответ Gemini
+                Gemini не распознал · показать ответ
               </summary>
               <pre
                 className="font-mono text-[9px] mt-2 overflow-auto max-h-40 whitespace-pre-wrap"
@@ -231,7 +296,7 @@ export default function CameraSheet({ open, onClose, onApply, onNeedApiKey }: Pr
                 {result.raw}
               </pre>
               <div className="font-mono text-[9px] mt-2" style={{ color: 'var(--text3)' }}>
-                Попробуй чётче фото: только один штамп в кадре, без бликов, прямо сверху.
+                Заполни поля вручную выше или попробуй более чёткое фото: один штамп в кадре, без бликов, прямо сверху.
               </div>
             </details>
           )}
@@ -247,7 +312,7 @@ export default function CameraSheet({ open, onClose, onApply, onNeedApiKey }: Pr
             </button>
             <button
               onClick={apply}
-              disabled={!result.country && !result.entry_date && !result.visa_type}
+              disabled={!canApply}
               className="py-3 rounded-lg font-semibold text-sm transition-all active:scale-[0.98] flex items-center justify-center gap-1.5 disabled:opacity-40 disabled:pointer-events-none"
               style={{ background: 'var(--text1)', color: 'var(--bg)' }}
             >
@@ -285,15 +350,22 @@ export default function CameraSheet({ open, onClose, onApply, onNeedApiKey }: Pr
   )
 }
 
-function Row({ label, value }: { label: string; value: string }) {
+const selectStyle = {
+  background: 'var(--bg3)',
+  borderColor: 'var(--border)',
+  color: 'var(--text1)',
+}
+
+function EditRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="flex justify-between items-baseline gap-3">
-      <span className="font-mono text-[9px] uppercase shrink-0" style={{ color: 'var(--text4)', letterSpacing: '0.12em' }}>
+    <div className="flex items-center gap-3">
+      <span
+        className="font-mono text-[9px] uppercase shrink-0 w-20"
+        style={{ color: 'var(--text4)', letterSpacing: '0.12em' }}
+      >
         {label}
       </span>
-      <span className="text-[13px] font-medium text-right" style={{ color: 'var(--text1)' }}>
-        {value}
-      </span>
+      <div className="flex-1 min-w-0">{children}</div>
     </div>
   )
 }

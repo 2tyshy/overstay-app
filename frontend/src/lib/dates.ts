@@ -37,6 +37,35 @@ export function calcDeadline(entryDate: string, maxDays: number): string {
   return addDaysLocal(entryDate, maxDays - 1)
 }
 
+// Inclusive day count between two YYYY-MM-DD dates (start and end count as day 1 and day N).
+export function daysBetween(startDate: string, endDate: string): number {
+  const s = parseLocalDate(startDate).getTime()
+  const e = parseLocalDate(endDate).getTime()
+  return Math.floor((e - s) / 86400000) + 1
+}
+
+// Given an entry date, the visa-rule max_days, and an optional visa_end (the
+// date the visa itself expires), return the EFFECTIVE deadline + effective
+// max_days. If visa_end is earlier than entry + max_days - 1, the visa
+// validity is the binding constraint and we shorten the stay accordingly.
+//
+// Rules:
+//   - No visaEnd, or visaEnd >= rule-deadline → use rule values (no change)
+//   - visaEnd < entry → ignore (invalid, user typo) → use rule values
+//   - visaEnd inside [entry, rule-deadline] → use visaEnd as deadline and
+//     reduce max_days to daysBetween(entry, visaEnd).
+export function effectiveDeadline(
+  entryDate: string,
+  ruleMaxDays: number,
+  visaEnd?: string,
+): { deadline: string; maxDays: number } {
+  const ruleDeadline = calcDeadline(entryDate, ruleMaxDays)
+  if (!visaEnd) return { deadline: ruleDeadline, maxDays: ruleMaxDays }
+  if (visaEnd < entryDate) return { deadline: ruleDeadline, maxDays: ruleMaxDays }
+  if (visaEnd >= ruleDeadline) return { deadline: ruleDeadline, maxDays: ruleMaxDays }
+  return { deadline: visaEnd, maxDays: Math.max(1, daysBetween(entryDate, visaEnd)) }
+}
+
 // Days remaining until and including the deadline day (local time).
 // 0 means today IS the deadline or it's already past.
 export function calcDaysLeft(deadline: string): number {

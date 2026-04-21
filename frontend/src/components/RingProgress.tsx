@@ -80,20 +80,43 @@ function MiniCalendar({ entryDate, maxDays, onClose }: { entryDate: string; maxD
           ))}
           {Array.from({ length: offset }, (_, i) => <div key={`e${i}`} />)}
           {cells.map(c => {
+            // Color rules:
+            //   - deadline day:    RED (background + text)
+            //   - today (non-deadline): neutral highlight
+            //   - entry day:       bold, neutral
+            //   - used (past stay):ORANGE bg + strike-through
+            //   - future days within visa window: GREEN
+            //   - everything else: muted gray
             let color = 'var(--text2)'
             let bg = 'transparent'
+            let border = 'none'
             let fontWeight: number = 400
-            if (c.isEntry) { color = 'var(--text1)'; fontWeight = 700 }
-            else if (c.isDeadline) { color = 'var(--alert-dot)'; fontWeight = 700 }
-            else if (c.isToday) { color = 'var(--text1)'; bg = 'var(--bg3)'; fontWeight = 600 }
-            else if (c.used) { color = 'var(--alert-text)'; bg = 'var(--alert-bg)' }
-            else if (c.isFuture) { color = 'var(--text3)' }
-            else { color = 'var(--text4)' }
+            if (c.isDeadline) {
+              color = 'var(--danger-text)'
+              bg = 'var(--danger-bg)'
+              border = '1px solid var(--danger-border)'
+              fontWeight = 700
+            } else if (c.isEntry) {
+              color = 'var(--text1)'
+              fontWeight = 700
+            } else if (c.isToday) {
+              color = 'var(--text1)'
+              bg = 'var(--bg3)'
+              fontWeight = 600
+            } else if (c.used) {
+              color = 'var(--alert-text)'
+              bg = 'var(--alert-bg)'
+            } else if (c.isFuture) {
+              color = 'var(--success-text)'
+              bg = 'var(--success-bg)'
+            } else {
+              color = 'var(--text4)'
+            }
             return (
               <div
                 key={c.day}
                 className="relative text-center py-1 rounded text-[11px] font-mono"
-                style={{ color, background: bg, fontWeight }}
+                style={{ color, background: bg, border, fontWeight }}
               >
                 {c.day}
                 {c.used && !c.isToday && !c.isEntry && !c.isDeadline && (
@@ -107,11 +130,11 @@ function MiniCalendar({ entryDate, maxDays, onClose }: { entryDate: string; maxD
           <span className="flex items-center gap-1 font-mono text-[8px]" style={{ color: 'var(--alert-text)' }}>
             <span className="w-2 h-2 rounded-sm" style={{ background: 'var(--alert-bg)', border: '1px solid var(--alert-border)' }} /> использовано
           </span>
-          <span className="flex items-center gap-1 font-mono text-[8px]" style={{ color: 'var(--text3)' }}>
-            <span className="w-2 h-2 rounded-sm" style={{ background: 'var(--bg3)', border: '1px solid var(--border)' }} /> сегодня
+          <span className="flex items-center gap-1 font-mono text-[8px]" style={{ color: 'var(--success-text)' }}>
+            <span className="w-2 h-2 rounded-sm" style={{ background: 'var(--success-bg)', border: '1px solid var(--success-border)' }} /> осталось
           </span>
-          <span className="flex items-center gap-1 font-mono text-[8px]" style={{ color: 'var(--alert-dot)' }}>
-            <span className="w-2 h-2 rounded-sm" style={{ border: '1px solid var(--alert-dot)' }} /> дедлайн
+          <span className="flex items-center gap-1 font-mono text-[8px]" style={{ color: 'var(--danger-text)' }}>
+            <span className="w-2 h-2 rounded-sm" style={{ background: 'var(--danger-bg)', border: '1px solid var(--danger-border)' }} /> дедлайн
           </span>
         </div>
       </div>
