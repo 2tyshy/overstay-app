@@ -18,6 +18,8 @@ export interface VisaEntry {
   created_at: string
   deadline: string
   days_left: number
+  visa_start?: string
+  visa_end?: string
 }
 
 export interface Scheme {

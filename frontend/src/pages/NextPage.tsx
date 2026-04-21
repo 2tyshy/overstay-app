@@ -1,32 +1,64 @@
+import { useMemo } from 'react'
 import StatusBanner from '@/components/StatusBanner'
 import DestRow from '@/components/DestRow'
-import type { VisaRule, Screen } from '@/types'
+import type { Screen, VisaEntry, PassportCountry } from '@/types'
+import { COUNTRY_DATA } from '@/lib/visaRules'
 
-interface Props { onNavigate: (screen: Screen) => void }
+interface Props {
+  onNavigate: (screen: Screen) => void
+  entries: VisaEntry[]
+  passport: PassportCountry
+}
 
-const MOCK_RULES: Array<VisaRule & { schemesCount: number }> = [
-  { passport: 'RU', country: 'TH', visa_type: 'dtv_180', max_days: 180, cost_of_living_usd: 700, cities: 'BKK · CNX', notes: '', schemesCount: 12 },
-  { passport: 'RU', country: 'MY', visa_type: 'visa_exempt', max_days: 90, cost_of_living_usd: 800, cities: 'KL · Penang', notes: '', schemesCount: 8 },
-  { passport: 'RU', country: 'KH', visa_type: 'visa_on_arrival', max_days: 30, cost_of_living_usd: 600, cities: 'PP · SR', notes: '', schemesCount: 5 },
-  { passport: 'RU', country: 'ID', visa_type: 'voa_60', max_days: 60, cost_of_living_usd: 700, cities: 'Bali', notes: '', schemesCount: 7 },
-  { passport: 'RU', country: 'PH', visa_type: 'visa_exempt', max_days: 30, cost_of_living_usd: 650, cities: 'Cebu', notes: '', schemesCount: 4 },
-]
+interface DestRule {
+  country: string
+  visa_type: string
+  max_days: number
+  notes: string
+  schemesCount: number
+  airports: string
+  cities: string
+  cost_range: string
+  unavailable: boolean
+}
 
-export default function NextPage({ onNavigate }: Props) {
+function getRulesForPassport(passport: PassportCountry): DestRule[] {
+  return Object.entries(COUNTRY_DATA).map(([country, data]) => ({
+    country,
+    visa_type: data.visa_type,
+    max_days: data.max_days[passport],
+    notes: data.notes_by_passport?.[passport] ?? data.description,
+    schemesCount: data.schemesCount,
+    airports: data.airports,
+    cities: data.cities,
+    cost_range: data.cost_of_living_usd,
+    unavailable: data.max_days[passport] === 0,
+  }))
+  // Put available destinations first, then sort by schemesCount desc
+  .sort((a, b) => {
+    if (a.unavailable !== b.unavailable) return a.unavailable ? 1 : -1
+    return b.schemesCount - a.schemesCount
+  })
+}
+
+export default function NextPage({ onNavigate, entries, passport }: Props) {
+  const current = entries[0]
+  const rules = useMemo(() => getRulesForPassport(passport), [passport])
+
   return (
     <div className="h-full overflow-y-auto px-[18px] pb-4" style={{ scrollbarWidth: 'none' }}>
-      <StatusBanner daysLeft={14} country="VN" />
+      {current && <StatusBanner daysLeft={current.days_left} country={current.country} />}
 
       <div
         className="font-mono text-[9px] uppercase mb-2 flex items-center gap-2.5"
         style={{ color: 'var(--text4)', letterSpacing: '0.24em' }}
       >
-        Подходящие · RU паспорт
+        Подходящие · {passport} паспорт
         <span className="flex-1 h-px" style={{ background: 'var(--border)' }} />
       </div>
 
-      {MOCK_RULES.map((rule, i) => (
-        <DestRow key={rule.country} rule={rule} schemesCount={rule.schemesCount} index={i} onClick={() => onNavigate('schemes')} />
+      {rules.map((rule, i) => (
+        <DestRow key={rule.country} rule={rule} index={i} onClick={() => onNavigate('schemes')} />
       ))}
     </div>
   )

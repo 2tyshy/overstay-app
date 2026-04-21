@@ -1,14 +1,14 @@
-import { List, Camera, FileText } from 'lucide-react'
+import { HelpCircle, Camera, FileText } from 'lucide-react'
 
 interface Props {
-  onSchemes: () => void
+  onFaq: () => void
   onStamp: () => void
   onPdf: () => void
 }
 
-export default function ActionGrid({ onSchemes, onStamp, onPdf }: Props) {
+export default function ActionGrid({ onFaq, onStamp, onPdf }: Props) {
   const actions = [
-    { icon: List, label: 'Схемы', sub: 'визаранов', onClick: onSchemes, primary: true },
+    { icon: HelpCircle, label: 'FAQ', sub: 'Горящие вопросы', onClick: onFaq, primary: true },
     { icon: Camera, label: 'Штамп', sub: 'фото → AI', onClick: onStamp, primary: false },
     { icon: FileText, label: 'PDF', sub: 'экспорт', onClick: onPdf, primary: false },
   ]

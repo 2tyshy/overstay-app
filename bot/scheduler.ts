@@ -3,9 +3,8 @@ import { createClient } from '@supabase/supabase-js'
 import { Telegraf } from 'telegraf'
 import { formatReminderMessage } from './messages'
 
-const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!)
-
 export function startScheduler(bot: Telegraf) {
+  const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!)
   cron.schedule('0 10 * * *', async () => {
     console.log('Running visa deadline check...')
 

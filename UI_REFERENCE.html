@@ -1,0 +1,796 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>RunLog</title>
+<!-- Geist Sans + Mono via Google Fonts CDN (open source) -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@300;400;500;600&display=swap" rel="stylesheet">
+<!-- Lucide icons via unpkg -->
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+
+:root {
+  --black:  #000000;
+  --b1:     #090909;
+  --b2:     #101010;
+  --b3:     #181818;
+  --b4:     #222222;
+  --b5:     #2c2c2c;
+  --white:  #ffffff;
+  --w1:     #ebebeb;
+  --w2:     #a8a8a8;
+  --w3:     #606060;
+  --w4:     #2e2e2e;
+  --w5:     #1c1c1c;
+  --red:    #ff2626;
+  --rdim:   rgba(255,38,38,0.08);
+  --rglow:  rgba(255,38,38,0.28);
+  --g: 'Geist', -apple-system, BlinkMacSystemFont, sans-serif;
+  --m: 'Geist Mono', ui-monospace, 'SF Mono', monospace;
+}
+
+html, body {
+  height: 100%;
+  background: #040404;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--g);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ── PHONE ── */
+.phone {
+  width: 390px; height: 844px;
+  background: var(--black);
+  border-radius: 52px;
+  overflow: hidden;
+  position: relative;
+  border: 1px solid #1a1a1a;
+  box-shadow:
+    0 0 0 1px #000,
+    0 60px 140px rgba(0,0,0,0.95),
+    inset 0 1px 0 rgba(255,255,255,0.035);
+}
+
+/* dot texture */
+.phone::after {
+  content:'';
+  position:absolute; inset:0;
+  background-image: radial-gradient(circle, rgba(255,255,255,0.01) 1px, transparent 1px);
+  background-size: 4px 4px;
+  pointer-events:none;
+  z-index:900;
+  mix-blend-mode: overlay;
+}
+
+/* ── SCREENS ── */
+.scr { position:absolute; inset:0; display:flex; flex-direction:column; opacity:0; pointer-events:none; transition:opacity 0.2s ease; background:var(--black); }
+.scr.on { opacity:1; pointer-events:all; }
+
+/* ── STATUS BAR ── */
+.sb {
+  padding: 18px 28px 0;
+  display: flex; justify-content:space-between; align-items:center;
+  flex-shrink: 0;
+}
+.sb-time {
+  font-family: var(--m);
+  font-size: 16px; font-weight: 400;
+  color: var(--white);
+  letter-spacing: 0.04em;
+}
+.sb-r { display:flex; align-items:center; gap:6px; }
+.bat {
+  display:flex; align-items:center; gap:3px;
+  font-family:var(--m); font-size:10px; color:var(--w3);
+}
+.bat-b {
+  width:22px; height:11px;
+  border:1px solid var(--w3); border-radius:2px; padding:2px;
+  position:relative;
+}
+.bat-b::after {
+  content:''; position:absolute;
+  right:-4px; top:50%; transform:translateY(-50%);
+  width:2px; height:5px; background:var(--w3); border-radius:0 1px 1px 0;
+}
+.bat-f { height:100%; width:78%; background:var(--w2); border-radius:1px; }
+
+/* ── HEADER ── */
+.hdr { padding:14px 22px 0; flex-shrink:0; }
+.hdr-row { display:flex; align-items:center; justify-content:space-between; }
+.wmark {
+  font-family:var(--g);
+  font-size:12px; font-weight:300;
+  letter-spacing:0.38em;
+  text-transform:uppercase;
+  color:var(--w3);
+}
+.pchip {
+  border:1px solid var(--w5); border-radius:4px;
+  padding:5px 10px;
+  display:flex; align-items:center; gap:6px;
+  cursor:pointer; transition:border-color 0.15s;
+}
+.pchip:hover { border-color:var(--w4); }
+.pflag { font-size:13px; }
+.pcode { font-family:var(--m); font-size:10px; color:var(--w1); letter-spacing:0.1em; }
+.pdot {
+  width:5px; height:5px; border-radius:50%;
+  background:var(--red); box-shadow:0 0 5px var(--rglow);
+  animation: blink 2s step-end infinite;
+}
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.2} }
+
+/* ── SCROLL ── */
+.scroll { flex:1; overflow-y:auto; overflow-x:hidden; padding:0 18px 110px; scrollbar-width:none; }
+.scroll::-webkit-scrollbar { display:none; }
+
+/* ══ HERO ══ */
+.hero {
+  margin: 18px 0 13px;
+  border:1px solid var(--w5); border-radius:5px; overflow:hidden;
+}
+
+/* risk strip */
+.risk {
+  height:2px; display:flex;
+}
+.rz { flex:1; }
+.rz.s { background:#1a3010; }
+.rz.m { background:#3a2a08; }
+.rz.d { background:#3a0808; }
+.rz.active { background:var(--red); box-shadow:0 0 4px var(--rglow); }
+
+/* top row */
+.hero-top {
+  padding:14px 16px;
+  display:flex; align-items:center; justify-content:space-between;
+  border-bottom:1px solid var(--w5);
+}
+.hero-loc { display:flex; align-items:center; gap:10px; }
+.hflag { font-size:24px; }
+.hname { font-family:var(--g); font-size:16px; font-weight:600; color:var(--white); letter-spacing:-0.01em; }
+.hvisa { font-family:var(--m); font-size:9px; color:var(--w3); margin-top:2px; letter-spacing:0.08em; text-transform:uppercase; }
+.stag {
+  border:1px solid var(--red); border-radius:3px;
+  padding:4px 8px;
+  font-family:var(--m); font-size:9px; color:var(--red);
+  letter-spacing:0.12em; text-transform:uppercase;
+  display:flex; align-items:center; gap:5px;
+}
+.sdot { width:4px; height:4px; border-radius:50%; background:var(--red); animation:blink 1.2s step-end infinite; }
+
+/* BIG NUMBER */
+.hnum-wrap {
+  padding:22px 16px 18px;
+  text-align:center;
+  border-bottom:1px solid var(--w5);
+}
+.hnum {
+  font-family:var(--g);
+  font-size:88px; font-weight:700;
+  line-height:1; letter-spacing:-0.04em;
+  color:var(--white);
+  display:block;
+  animation:numIn 0.6s cubic-bezier(0.16,1,0.3,1) both;
+}
+@keyframes numIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+.hnum-lbl {
+  font-family:var(--m); font-size:9px; color:var(--w3);
+  letter-spacing:0.28em; text-transform:uppercase;
+  margin-top:7px; display:block;
+}
+
+/* SEGMENTED BAR */
+.seg-wrap { padding:13px 16px; border-bottom:1px solid var(--w5); }
+.seg-row { display:flex; justify-content:space-between; margin-bottom:7px; }
+.seg-lbl { font-family:var(--m); font-size:9px; color:var(--w3); letter-spacing:0.12em; text-transform:uppercase; }
+.seg-bar { display:flex; gap:2px; }
+.seg { flex:1; height:4px; background:var(--w5); border-radius:1px; transition:background 0.25s; }
+.seg.u { background:var(--w3); }
+.seg.d { background:var(--red); box-shadow:0 0 3px var(--rglow); }
+
+/* STATS */
+.stats { display:grid; grid-template-columns:1fr 1px 1fr 1px 1fr; border-bottom:1px solid var(--w5); }
+.stat { padding:11px 8px; text-align:center; }
+.sv {
+  font-family:var(--g); font-size:20px; font-weight:600;
+  color:var(--w1); display:block; letter-spacing:-0.02em;
+}
+.sl { font-family:var(--m); font-size:8px; color:var(--w3); text-transform:uppercase; letter-spacing:0.1em; margin-top:2px; display:block; }
+.sdiv { background:var(--w5); }
+
+/* DATES */
+.hdates { display:grid; grid-template-columns:1fr 1px 1fr; }
+.hdate { padding:11px 16px; }
+.hdl { font-family:var(--m); font-size:9px; color:var(--w3); letter-spacing:0.14em; text-transform:uppercase; margin-bottom:4px; }
+.hdv { font-family:var(--g); font-size:15px; font-weight:500; color:var(--w1); letter-spacing:0.01em; }
+.hddiv { background:var(--w5); }
+
+/* ── ALERT ── */
+.alert {
+  border:1px solid rgba(255,38,38,0.22); border-left:2px solid var(--red);
+  border-radius:4px; padding:10px 13px;
+  display:flex; gap:10px; align-items:flex-start;
+  margin-bottom:11px; background:var(--rdim);
+}
+.al-icon { flex-shrink:0; margin-top:1px; color:var(--red); }
+.al-t { font-family:var(--g); font-size:12px; font-weight:600; color:var(--red); margin-bottom:2px; }
+.al-s { font-family:var(--m); font-size:10px; color:rgba(255,38,38,0.5); letter-spacing:0.02em; }
+
+/* ── ACTION GRID ── */
+.act-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:7px; margin-bottom:11px; }
+.abt {
+  border:1px solid var(--w5); border-radius:4px;
+  padding:13px 10px; cursor:pointer;
+  transition:all 0.15s; background:none;
+  text-align:left; color:var(--white); width:100%;
+}
+.abt:hover { border-color:var(--w4); background:var(--b2); }
+.abt.red:hover { border-color:var(--red); background:var(--rdim); }
+.abt:active { transform:scale(0.97); }
+.abt-ic { display:block; margin-bottom:9px; color:var(--w2); }
+.abt-l { font-family:var(--g); font-size:11px; font-weight:600; color:var(--w1); display:block; }
+.abt-s { font-family:var(--m); font-size:8px; color:var(--w3); margin-top:2px; display:block; letter-spacing:0.04em; }
+
+/* ── SECTION ── */
+.sec {
+  font-family:var(--m); font-size:9px; color:var(--w3);
+  letter-spacing:0.26em; text-transform:uppercase;
+  margin:16px 0 9px;
+  display:flex; align-items:center; gap:10px;
+}
+.sec::after { content:''; flex:1; height:1px; background:var(--w5); }
+
+/* ── HISTORY ── */
+.hist {
+  border:1px solid var(--w5); border-radius:4px;
+  padding:10px 13px; display:flex; align-items:center; gap:11px;
+  margin-bottom:6px; opacity:0.4; cursor:pointer; transition:all 0.15s;
+}
+.hist:hover { opacity:0.65; border-color:var(--w4); }
+.hflag2 { font-size:18px; flex-shrink:0; }
+.hi-n { font-family:var(--g); font-size:13px; font-weight:500; color:var(--white); }
+.hi-m { font-family:var(--m); font-size:9px; color:var(--w3); margin-top:1px; }
+.hbadge {
+  font-family:var(--m); font-size:9px;
+  border:1px solid var(--w5); border-radius:2px;
+  padding:2px 6px; color:var(--w3); letter-spacing:0.06em; flex-shrink:0;
+}
+
+/* ══ SCHEMES ══ */
+.filts {
+  display:flex; gap:5px; overflow-x:auto; scrollbar-width:none;
+  padding:13px 0 0; margin:0 -18px; padding-left:18px; padding-right:18px;
+}
+.filts::-webkit-scrollbar { display:none; }
+.flt {
+  border:1px solid var(--w5); border-radius:3px;
+  padding:5px 11px; font-family:var(--m); font-size:10px;
+  color:var(--w3); cursor:pointer; white-space:nowrap; flex-shrink:0;
+  transition:all 0.15s; background:none;
+}
+.flt.on { border-color:var(--w3); color:var(--w1); background:var(--b3); }
+.flt:hover:not(.on) { border-color:var(--w4); color:var(--w2); }
+
+.sch {
+  border:1px solid var(--w5); border-radius:4px; overflow:hidden;
+  margin-bottom:9px; transition:border-color 0.15s;
+  animation:schIn 0.28s cubic-bezier(0.16,1,0.3,1) both;
+}
+.sch:nth-child(1){animation-delay:.04s} .sch:nth-child(2){animation-delay:.08s} .sch:nth-child(3){animation-delay:.12s}
+@keyframes schIn { from{opacity:0;transform:translateY(7px)} to{opacity:1;transform:translateY(0)} }
+.sch:hover { border-color:var(--w4); }
+
+.sch-hd {
+  padding:11px 14px; display:flex; align-items:center; justify-content:space-between;
+  border-bottom:1px solid var(--w5);
+}
+.sch-rt { display:flex; align-items:center; gap:9px; }
+.sch-fl { font-size:17px; letter-spacing:2px; }
+.sch-x { font-family:var(--m); font-size:10px; color:var(--w2); border:1px solid var(--w5); border-radius:2px; padding:2px 7px; }
+.sch-n { display:flex; align-items:center; gap:4px; font-family:var(--g); font-size:13px; font-weight:500; color:var(--w2); }
+.sch-nd { width:4px; height:4px; border-radius:50%; background:var(--w3); }
+
+.sch-bd { padding:11px 14px; }
+.sch-d { font-family:var(--m); font-size:11px; line-height:1.8; color:var(--w2); margin-bottom:9px; }
+.sch-tip {
+  border-left:2px solid var(--w4); padding:7px 10px;
+  font-family:var(--m); font-size:10px; color:var(--w3); line-height:1.6;
+  margin-bottom:9px; background:var(--b2); border-radius:0 3px 3px 0;
+}
+.sch-tags { display:flex; gap:5px; flex-wrap:wrap; margin-bottom:11px; }
+.sch-t { font-family:var(--m); font-size:9px; color:var(--w3); border:1px solid var(--w5); border-radius:2px; padding:2px 6px; }
+
+.sch-v { display:flex; gap:6px; padding-top:10px; border-top:1px solid var(--w5); }
+.vote {
+  flex:1; background:none; border:1px solid var(--w5); border-radius:3px;
+  padding:7px 6px; cursor:pointer; font-family:var(--g); font-size:12px;
+  font-weight:500; color:var(--w3);
+  display:flex; align-items:center; justify-content:center; gap:5px;
+  transition:all 0.15s;
+}
+.vote.yes:hover,.vote.yes.on { border-color:var(--w3); color:var(--w1); background:var(--b3); }
+.vote.no:hover,.vote.no.on   { border-color:var(--red); color:var(--red); background:var(--rdim); }
+
+.add-sch {
+  border:1px dashed var(--w5); border-radius:4px;
+  padding:14px 13px; display:flex; align-items:center; gap:12px;
+  cursor:pointer; background:none; width:100%;
+  transition:all 0.15s; color:var(--white); margin-top:2px;
+}
+.add-sch:hover { border-color:var(--w4); background:var(--b2); }
+.add-sch-ic { width:32px; height:32px; border:1px solid var(--w5); border-radius:3px; display:flex; align-items:center; justify-content:center; flex-shrink:0; color:var(--w3); }
+.add-sch-l { font-family:var(--g); font-size:13px; font-weight:500; display:block; }
+.add-sch-s { font-family:var(--m); font-size:9px; color:var(--w3); margin-top:1px; }
+
+/* ══ NEXT ══ */
+.nxt-ban {
+  border:1px solid var(--w5); border-radius:4px;
+  padding:15px 16px; margin:15px 0 13px;
+  position:relative; overflow:hidden;
+}
+.nxt-ban::before { content:''; position:absolute; top:0; left:0; right:0; height:1px; background:linear-gradient(90deg, var(--w5), var(--w3) 40%, var(--w5)); }
+.nb-l { font-family:var(--m); font-size:9px; color:var(--w3); letter-spacing:0.26em; text-transform:uppercase; margin-bottom:7px; }
+.nb-n { font-family:var(--g); font-size:42px; font-weight:700; color:var(--white); line-height:1; margin-bottom:2px; display:block; letter-spacing:-0.03em; }
+.nb-s { font-family:var(--m); font-size:11px; color:var(--w3); }
+.nb-s em { color:var(--w1); font-style:normal; }
+
+.dest {
+  border:1px solid var(--w5); border-radius:4px;
+  padding:12px 13px; display:flex; align-items:center; gap:12px;
+  margin-bottom:7px; cursor:pointer; transition:all 0.15s;
+  animation:schIn 0.28s cubic-bezier(0.16,1,0.3,1) both;
+}
+.dest:hover { border-color:var(--w4); background:var(--b2); }
+.dest:nth-child(1){animation-delay:.04s} .dest:nth-child(2){animation-delay:.08s}
+.dest:nth-child(3){animation-delay:.12s} .dest:nth-child(4){animation-delay:.16s}
+.dest:nth-child(5){animation-delay:.2s}
+.dflag { font-size:26px; flex-shrink:0; }
+.di { flex:1; }
+.dn { font-family:var(--g); font-size:14px; font-weight:600; color:var(--white); margin-bottom:4px; letter-spacing:-0.01em; }
+.dts { display:flex; gap:5px; flex-wrap:wrap; }
+.dt { font-family:var(--m); font-size:9px; color:var(--w3); border:1px solid var(--w5); border-radius:2px; padding:2px 5px; }
+.dt.hi { color:var(--w1); border-color:var(--w4); }
+.dr { text-align:right; flex-shrink:0; }
+.dcnt { font-family:var(--g); font-size:15px; font-weight:600; color:var(--w2); letter-spacing:-0.02em; }
+.dclbl { font-family:var(--m); font-size:8px; color:var(--w3); }
+.darr { color:var(--w4); font-size:15px; margin-left:5px; flex-shrink:0; }
+
+/* ══ NAV ══ */
+.nav {
+  position:absolute; bottom:0; left:0; right:0;
+  background:rgba(0,0,0,0.97);
+  backdrop-filter:blur(24px) saturate(180%);
+  -webkit-backdrop-filter:blur(24px) saturate(180%);
+  border-top:1px solid var(--w5);
+  display:flex; padding:10px 4px 32px; z-index:10;
+}
+.nb2 {
+  flex:1; display:flex; flex-direction:column; align-items:center; gap:4px;
+  padding:7px 4px; cursor:pointer; transition:all 0.15s;
+  border-radius:4px; position:relative;
+}
+.nb2:active { background:var(--b2); }
+.nb2.on i-lucide { color:var(--white) !important; }
+.nb2.on .nl { color:var(--white); }
+.nb2.on::after {
+  content:''; position:absolute; bottom:-2px; left:50%; transform:translateX(-50%);
+  width:18px; height:2px; background:var(--white);
+  box-shadow:0 0 6px rgba(255,255,255,0.25);
+}
+.nb2 svg { color:var(--w3); transition:color 0.15s; }
+.nb2.on svg { color:var(--white); }
+.nl { font-family:var(--m); font-size:9px; color:var(--w3); letter-spacing:0.14em; text-transform:uppercase; transition:color 0.15s; }
+
+/* ══ MODAL ══ */
+.mbg {
+  position:absolute; inset:0; background:rgba(0,0,0,0.9);
+  display:flex; align-items:flex-end; z-index:200;
+  opacity:0; pointer-events:none; transition:opacity 0.2s;
+}
+.mbg.show { opacity:1; pointer-events:all; }
+.msheet {
+  background:var(--b1); border-top:1px solid var(--w5);
+  width:100%; padding:0 22px 42px;
+  transform:translateY(100%);
+  transition:transform 0.36s cubic-bezier(0.32,0.72,0,1);
+}
+.mbg.show .msheet { transform:translateY(0); }
+.mhandle { width:28px; height:3px; background:var(--w5); margin:12px auto 20px; border-radius:2px; }
+.mtitle { font-family:var(--g); font-size:17px; font-weight:600; margin-bottom:19px; color:var(--white); }
+
+.uzone {
+  border:1px dashed var(--w5); border-radius:5px;
+  padding:24px 18px; text-align:center; cursor:pointer;
+  transition:all 0.15s; margin-bottom:15px;
+}
+.uzone:hover { border-color:var(--w4); background:var(--b2); }
+.uic { display:flex; justify-content:center; margin-bottom:10px; color:var(--w2); }
+.ut { font-family:var(--g); font-size:14px; font-weight:500; margin-bottom:4px; }
+.us { font-family:var(--m); font-size:10px; color:var(--w3); line-height:1.55; }
+
+.or { display:flex; align-items:center; gap:10px; font-family:var(--m); font-size:9px; color:var(--w3); letter-spacing:0.26em; margin:13px 0; }
+.or::before,.or::after { content:''; flex:1; height:1px; background:var(--w5); }
+.irow { display:grid; grid-template-columns:1fr 1fr; gap:9px; margin-bottom:9px; }
+.ig { display:flex; flex-direction:column; gap:4px; }
+.il { font-family:var(--m); font-size:9px; color:var(--w3); letter-spacing:0.2em; text-transform:uppercase; }
+.inp {
+  background:var(--b2); border:1px solid var(--w5); border-radius:4px;
+  padding:10px 11px; font-family:var(--m); font-size:13px;
+  color:var(--white); outline:none; width:100%;
+  transition:border-color 0.15s;
+  -webkit-appearance:none;
+}
+.inp:focus { border-color:var(--w3); }
+.inp::placeholder { color:var(--w3); }
+.savebtn {
+  background:var(--white); color:var(--black);
+  border:none; border-radius:4px; padding:14px;
+  width:100%; font-family:var(--g); font-size:14px; font-weight:700;
+  cursor:pointer; margin-top:11px; letter-spacing:0.02em;
+  transition:all 0.15s; -webkit-appearance:none;
+}
+.savebtn:hover { background:var(--w1); }
+.savebtn:active { transform:scale(0.98); }
+
+/* Lucide icon sizing helper */
+svg.ico { display:block; }
+</style>
+</head>
+<body>
+<div class="phone">
+
+<!-- ══════ STATUS ══════ -->
+<div class="scr on" id="s-status">
+  <div class="sb">
+    <span class="sb-time">21:44</span>
+    <div class="sb-r">
+      <div class="bat">
+        <div class="bat-b"><div class="bat-f"></div></div>
+        87
+      </div>
+    </div>
+  </div>
+  <div class="hdr">
+    <div class="hdr-row">
+      <span class="wmark">RunLog</span>
+      <div class="pchip">
+        <span class="pflag">🇷🇺</span>
+        <span class="pcode">RU · PASS</span>
+        <span class="pdot"></span>
+      </div>
+    </div>
+  </div>
+
+  <div class="scroll">
+    <div class="hero">
+      <!-- risk zones strip: safe/mid/danger with active marker -->
+      <div class="risk">
+        <div class="rz s" style="flex:6"></div>
+        <div class="rz m" style="flex:2"></div>
+        <div class="rz d" style="flex:1"></div>
+        <div class="rz active" style="flex:1"></div>
+      </div>
+
+      <div class="hero-top">
+        <div class="hero-loc">
+          <span class="hflag">🇻🇳</span>
+          <div>
+            <div class="hname">Вьетнам</div>
+            <div class="hvisa">E-Visa · 90 дней</div>
+          </div>
+        </div>
+        <div class="stag"><span class="sdot"></span>WARN</div>
+      </div>
+
+      <div class="hnum-wrap">
+        <span class="hnum">14</span>
+        <span class="hnum-lbl">дней осталось</span>
+      </div>
+
+      <div class="seg-wrap">
+        <div class="seg-row">
+          <span class="seg-lbl">Использовано</span>
+          <span class="seg-lbl">84 / 90 дн.</span>
+        </div>
+        <div class="seg-bar" id="segbar"></div>
+      </div>
+
+      <div class="stats">
+        <div class="stat"><span class="sv">07</span><span class="sl">Стран</span></div>
+        <div class="sdiv"></div>
+        <div class="stat"><span class="sv">312</span><span class="sl">Дней</span></div>
+        <div class="sdiv"></div>
+        <div class="stat"><span class="sv">04</span><span class="sl">Ранов</span></div>
+      </div>
+
+      <div class="hdates">
+        <div class="hdate"><div class="hdl">Въезд</div><div class="hdv">15 Мар</div></div>
+        <div class="hddiv"></div>
+        <div class="hdate" style="text-align:right"><div class="hdl">Дедлайн</div><div class="hdv">13 Июн</div></div>
+      </div>
+    </div>
+
+    <!-- ALERT -->
+    <div class="alert">
+      <div class="al-icon">
+        <svg class="ico" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+        </svg>
+      </div>
+      <div>
+        <div class="al-t">Планируй ран</div>
+        <div class="al-s">3 схемы доступны · RU → LA, KH, TH</div>
+      </div>
+    </div>
+
+    <!-- ACTIONS -->
+    <div class="act-grid">
+      <button class="abt red" onclick="go('schemes')">
+        <span class="abt-ic">
+          <svg class="ico" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/>
+            <line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>
+          </svg>
+        </span>
+        <span class="abt-l">Схемы</span>
+        <span class="abt-s">визаранов</span>
+      </button>
+      <button class="abt" onclick="openModal()">
+        <span class="abt-ic">
+          <svg class="ico" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/>
+            <circle cx="12" cy="13" r="4"/>
+          </svg>
+        </span>
+        <span class="abt-l">Штамп</span>
+        <span class="abt-s">фото → AI</span>
+      </button>
+      <button class="abt">
+        <span class="abt-ic">
+          <svg class="ico" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+            <polyline points="14,2 14,8 20,8"/>
+            <line x1="16" y1="13" x2="8" y2="13"/>
+            <line x1="16" y1="17" x2="8" y2="17"/>
+            <polyline points="10,9 9,9 8,9"/>
+          </svg>
+        </span>
+        <span class="abt-l">PDF</span>
+        <span class="abt-s">экспорт</span>
+      </button>
+    </div>
+
+    <div class="sec">История</div>
+    <div class="hist">
+      <span class="hflag2">🇹🇭</span>
+      <div style="flex:1"><div class="hi-n">Таиланд</div><div class="hi-m">DTV · 10.09.25 — 08.03.26</div></div>
+      <span class="hbadge">180 ДН</span>
+    </div>
+    <div class="hist">
+      <span class="hflag2">🇰🇭</span>
+      <div style="flex:1"><div class="hi-n">Камбоджа</div><div class="hi-m">Ран · 2 дн · Moc Bai</div></div>
+      <span class="hbadge">РАН</span>
+    </div>
+  </div>
+
+  <nav class="nav">
+    <div class="nb2 on" onclick="go('status')">
+      <svg class="ico" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+        <rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>
+      </svg>
+      <span class="nl">Статус</span>
+    </div>
+    <div class="nb2" onclick="go('schemes')">
+      <svg class="ico" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="3" y1="12" x2="21" y2="12"/><polyline points="8,7 3,12 8,17"/>
+        <polyline points="16,7 21,12 16,17"/>
+      </svg>
+      <span class="nl">Схемы</span>
+    </div>
+    <div class="nb2" onclick="go('next')">
+      <svg class="ico" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="9"/>
+        <polyline points="12,8 16,12 12,16"/>
+        <line x1="8" y1="12" x2="16" y2="12"/>
+      </svg>
+      <span class="nl">Дальше</span>
+    </div>
+  </nav>
+</div>
+
+<!-- ══════ SCHEMES ══════ -->
+<div class="scr" id="s-schemes">
+  <div class="sb"><span class="sb-time">21:44</span></div>
+  <div class="hdr">
+    <div class="hdr-row">
+      <span class="wmark">Схемы</span>
+      <div class="pchip"><span class="pflag">🇷🇺</span><span class="pcode">RU · PASS</span></div>
+    </div>
+  </div>
+  <div class="scroll">
+    <div class="filts">
+      <button class="flt on">Все</button>
+      <button class="flt" onclick="filt(this)">VN →</button>
+      <button class="flt" onclick="filt(this)">TH →</button>
+      <button class="flt" onclick="filt(this)">Граница</button>
+      <button class="flt" onclick="filt(this)">Самолёт</button>
+    </div>
+    <div class="sec" style="margin-top:15px">47 подтверждено · RU</div>
+
+    <div class="sch">
+      <div class="sch-hd">
+        <div class="sch-rt"><span class="sch-fl">🇻🇳→🇱🇦</span><span class="sch-x">Nam Phao</span></div>
+        <div class="sch-n"><span class="sch-nd"></span>47</div>
+      </div>
+      <div class="sch-bd">
+        <div class="sch-d">Автобус из HCMC → Vinh → граница Nam Phao. Пешком через КПП, штамп Лаос, разворот. Новый VN штамп 90 дней. Весь день туда-обратно.</div>
+        <div class="sch-tip">Бери $35 налик — $20 виза Лаос + буфер на транспорт на месте</div>
+        <div class="sch-tags"><span class="sch-t">~$25</span><span class="sch-t">~10ч</span><span class="sch-t">МАР 2026</span></div>
+        <div class="sch-v">
+          <button class="vote yes" onclick="vote(this)">👍 <span>47</span></button>
+          <button class="vote no" onclick="vote(this)">👎 <span>3</span></button>
+        </div>
+      </div>
+    </div>
+
+    <div class="sch">
+      <div class="sch-hd">
+        <div class="sch-rt"><span class="sch-fl">🇻🇳→🇰🇭</span><span class="sch-x">Moc Bai</span></div>
+        <div class="sch-n"><span class="sch-nd"></span>31</div>
+      </div>
+      <div class="sch-bd">
+        <div class="sch-d">Из HCMC автобус до Moc Bai — 2 часа. Быстрый КПП в Камбоджу и назад. Самый короткий ран из Хошимина, можно уложиться в полдня.</div>
+        <div class="sch-tip">Виза Камбоджа $30 на месте. Некоторые автобусы берут $5 доп — торгуйся</div>
+        <div class="sch-tags"><span class="sch-t">~$40</span><span class="sch-t">~5ч</span><span class="sch-t">ФЕВ 2026</span></div>
+        <div class="sch-v">
+          <button class="vote yes" onclick="vote(this)">👍 <span>31</span></button>
+          <button class="vote no" onclick="vote(this)">👎 <span>1</span></button>
+        </div>
+      </div>
+    </div>
+
+    <div class="sch">
+      <div class="sch-hd">
+        <div class="sch-rt"><span class="sch-fl">🇻🇳✈️🇰🇷</span><span class="sch-x">Сеул + TH e-visa</span></div>
+        <div class="sch-n"><span class="sch-nd"></span>19</div>
+      </div>
+      <div class="sch-bd">
+        <div class="sch-d">Рейс в Сеул на неделю. В Thai консульстве e-Visa за 3 дня. Прилетаешь обратно с готовой Thai визой или сразу в Бангкок.</div>
+        <div class="sch-tip">Корея 90 дней безвиз для RU. Совмести с путешествием — минус стресс</div>
+        <div class="sch-tags"><span class="sch-t">~$200+</span><span class="sch-t">~7 дн</span><span class="sch-t">ЯНВ 2026</span></div>
+        <div class="sch-v">
+          <button class="vote yes" onclick="vote(this)">👍 <span>19</span></button>
+          <button class="vote no" onclick="vote(this)">👎 <span>0</span></button>
+        </div>
+      </div>
+    </div>
+
+    <button class="add-sch">
+      <div class="add-sch-ic">
+        <svg class="ico" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+          <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+        </svg>
+      </div>
+      <div><span class="add-sch-l">Добавить схему</span><span class="add-sch-s">Помоги другим · анонимно</span></div>
+    </button>
+  </div>
+
+  <nav class="nav">
+    <div class="nb2" onclick="go('status')">
+      <svg class="ico" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+      <span class="nl">Статус</span>
+    </div>
+    <div class="nb2 on" onclick="go('schemes')">
+      <svg class="ico" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><polyline points="8,7 3,12 8,17"/><polyline points="16,7 21,12 16,17"/></svg>
+      <span class="nl">Схемы</span>
+    </div>
+    <div class="nb2" onclick="go('next')">
+      <svg class="ico" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12,8 16,12 12,16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+      <span class="nl">Дальше</span>
+    </div>
+  </nav>
+</div>
+
+<!-- ══════ NEXT ══════ -->
+<div class="scr" id="s-next">
+  <div class="sb"><span class="sb-time">21:44</span></div>
+  <div class="hdr">
+    <div class="hdr-row">
+      <span class="wmark">Дальше</span>
+      <div class="pchip"><span class="pflag">🇷🇺</span><span class="pcode">RU · PASS</span></div>
+    </div>
+  </div>
+  <div class="scroll">
+    <div class="nxt-ban">
+      <div class="nb-l">Текущий статус</div>
+      <span class="nb-n">14</span>
+      <div class="nb-s">дней до конца · <em>🇻🇳 Вьетнам</em></div>
+    </div>
+    <div class="sec">Подходящие · RU паспорт</div>
+    <div class="dest"><span class="dflag">🇹🇭</span><div class="di"><div class="dn">Таиланд</div><div class="dts"><span class="dt hi">DTV 180 дн</span><span class="dt">~$700/мес</span><span class="dt">BKK · CNX</span></div></div><div class="dr"><div class="dcnt">12</div><div class="dclbl">схем</div></div><span class="darr">›</span></div>
+    <div class="dest"><span class="dflag">🇲🇾</span><div class="di"><div class="dn">Малайзия</div><div class="dts"><span class="dt hi">90 дн безвиз</span><span class="dt">~$800/мес</span><span class="dt">KL · Penang</span></div></div><div class="dr"><div class="dcnt">08</div><div class="dclbl">схем</div></div><span class="darr">›</span></div>
+    <div class="dest"><span class="dflag">🇰🇭</span><div class="di"><div class="dn">Камбоджа</div><div class="dts"><span class="dt">30 дн + продл</span><span class="dt">~$600/мес</span><span class="dt">PP · SR</span></div></div><div class="dr"><div class="dcnt">05</div><div class="dclbl">схем</div></div><span class="darr">›</span></div>
+    <div class="dest"><span class="dflag">🇮🇩</span><div class="di"><div class="dn">Индонезия</div><div class="dts"><span class="dt">60 дн + продл</span><span class="dt">~$700/мес</span><span class="dt">Bali</span></div></div><div class="dr"><div class="dcnt">07</div><div class="dclbl">схем</div></div><span class="darr">›</span></div>
+    <div class="dest"><span class="dflag">🇵🇭</span><div class="di"><div class="dn">Филиппины</div><div class="dts"><span class="dt">30→59 дн</span><span class="dt">~$650/мес</span><span class="dt">Cebu</span></div></div><div class="dr"><div class="dcnt">04</div><div class="dclbl">схем</div></div><span class="darr">›</span></div>
+  </div>
+  <nav class="nav">
+    <div class="nb2" onclick="go('status')"><svg class="ico" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg><span class="nl">Статус</span></div>
+    <div class="nb2" onclick="go('schemes')"><svg class="ico" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><polyline points="8,7 3,12 8,17"/><polyline points="16,7 21,12 16,17"/></svg><span class="nl">Схемы</span></div>
+    <div class="nb2 on" onclick="go('next')"><svg class="ico" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12,8 16,12 12,16"/><line x1="8" y1="12" x2="16" y2="12"/></svg><span class="nl">Дальше</span></div>
+  </nav>
+</div>
+
+<!-- ══════ MODAL ══════ -->
+<div class="mbg" id="modal" onclick="maybeClose(event)">
+  <div class="msheet">
+    <div class="mhandle"></div>
+    <div class="mtitle">Добавить въезд</div>
+    <div class="uzone">
+      <div class="uic">
+        <svg class="ico" width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/>
+          <circle cx="12" cy="13" r="4"/>
+        </svg>
+      </div>
+      <div class="ut">Сфоткай штамп в паспорте</div>
+      <div class="us">AI распознает страну и дату<br>фото не сохраняется на сервере</div>
+    </div>
+    <div class="or">или вручную</div>
+    <div class="irow">
+      <div class="ig"><label class="il">Страна</label><input class="inp" placeholder="VN"/></div>
+      <div class="ig"><label class="il">Тип визы</label><input class="inp" placeholder="E-Visa 90d"/></div>
+    </div>
+    <div class="ig"><label class="il">Дата въезда</label><input class="inp" type="date"/></div>
+    <button class="savebtn" onclick="closeModal()">Сохранить</button>
+  </div>
+</div>
+
+</div>
+
+<script>
+// Segmented bar
+const bar = document.getElementById('segbar');
+const total = 22, used = Math.round(84/90*22);
+for(let i=0;i<total;i++){
+  const s = document.createElement('div');
+  s.className = 'seg' + (i < used ? (i >= total-3 ? ' d' : ' u') : '');
+  bar.appendChild(s);
+}
+
+function go(name) {
+  document.querySelectorAll('.scr').forEach(s => s.classList.remove('on'));
+  document.getElementById('s-'+name).classList.add('on');
+}
+function filt(el) {
+  document.querySelectorAll('#s-schemes .flt').forEach(f => f.classList.remove('on'));
+  el.classList.add('on');
+}
+function vote(btn) {
+  const wrap = btn.closest('.sch-v');
+  const already = btn.classList.contains('on');
+  wrap.querySelectorAll('.vote').forEach(v => {
+    if(v.classList.contains('on')) {
+      v.querySelector('span').textContent = parseInt(v.querySelector('span').textContent) - 1;
+      v.classList.remove('on');
+    }
+  });
+  if(!already) {
+    btn.classList.add('on');
+    btn.querySelector('span').textContent = parseInt(btn.querySelector('span').textContent) + 1;
+  }
+}
+function openModal() { document.getElementById('modal').classList.add('show'); }
+function closeModal() { document.getElementById('modal').classList.remove('show'); }
+function maybeClose(e) { if(e.target === document.getElementById('modal')) closeModal(); }
+</script>
+</body>
+</html>

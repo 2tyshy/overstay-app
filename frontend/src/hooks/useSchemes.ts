@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
-import type { Scheme, SchemeVote } from '@/types'
+import type { Scheme } from '@/types'
 
 export function useSchemes(passport: string, userId: string | undefined) {
   const [schemes, setSchemes] = useState<Scheme[]>([])
@@ -25,7 +25,7 @@ export function useSchemes(passport: string, userId: string | undefined) {
 
         if (voteData) {
           const map: Record<string, 'works' | 'broken'> = {}
-          voteData.forEach((v: SchemeVote) => { map[v.scheme_id] = v.vote })
+          voteData.forEach((v: { scheme_id: string; vote: 'works' | 'broken' }) => { map[v.scheme_id] = v.vote })
           setVotes(map)
         }
       }

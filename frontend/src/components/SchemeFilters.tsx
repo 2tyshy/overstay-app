@@ -18,7 +18,7 @@ export default function SchemeFilters({ onFilter }: Props) {
           className="shrink-0 border rounded px-3 py-1 font-mono text-[10px] transition-all duration-150"
           style={{
             borderColor: active === f ? 'var(--text3)' : 'var(--border)',
-            color: active === f ? 'var(--text2)' : 'var(--text3)',
+            color: active === f ? 'var(--text1)' : 'var(--text3)',
             background: active === f ? 'var(--bg3)' : 'transparent',
           }}
         >

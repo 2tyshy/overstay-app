@@ -15,6 +15,8 @@
   --text1: #1a1a1a; --text2: #555; --text3: #999; --text4: #bbb;
   --alert-bg: #fef7ed; --alert-border: #f5deb8;
   --alert-text: #9a7b4f; --alert-dot: #e8a85c;
+  --danger-bg: #fef2f2; --danger-border: #fecaca;
+  --danger-text: #b91c1c; --danger-dot: #ef4444;
   --ring-color: #e8a85c; --ring-track: #eeece9;
 }
 
@@ -24,6 +26,8 @@
   --text1: #e8e8ea; --text2: #aaa; --text3: #555; --text4: #444;
   --alert-bg: rgba(200,150,69,0.06); --alert-border: rgba(200,150,69,0.15);
   --alert-text: #c89545; --alert-dot: #c89545;
+  --danger-bg: rgba(239,68,68,0.08); --danger-border: rgba(239,68,68,0.2);
+  --danger-text: #f87171; --danger-dot: #ef4444;
   --ring-color: #c89545; --ring-track: #28282e;
 }
 
@@ -41,6 +45,19 @@ html, body, #root {
 input, button, select, textarea {
   -webkit-appearance: none;
   appearance: none;
+  font-family: inherit;
+}
+
+input[type="date"] {
+  color-scheme: light dark;
+}
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--text3);
+  outline-offset: 2px;
 }
 
 ::-webkit-scrollbar { display: none; }
@@ -69,4 +86,16 @@ input, button, select, textarea {
 @keyframes lineIn {
   from { width: 0; opacity: 0; }
   to { width: 18px; opacity: 1; }
+}
+
+@keyframes toastIn {
+  from { opacity: 0; transform: translate(-50%, 12px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001s !important;
+    transition-duration: 0.001s !important;
+  }
 }

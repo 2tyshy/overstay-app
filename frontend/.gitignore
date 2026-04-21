@@ -1,0 +1,8 @@
+node_modules
+dist
+.vercel
+
+# Environment files — never commit API keys
+.env
+.env.local
+.env.*.local
