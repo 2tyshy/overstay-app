@@ -1,16 +1,25 @@
+import { useState } from 'react'
+import { MessageSquare } from 'lucide-react'
 import { COUNTRY_FLAGS, type Scheme } from '@/types'
+import SchemeCommentsThread from './SchemeCommentsThread'
 
 interface Props {
   scheme: Scheme
   index: number
   userVote?: 'works' | 'broken' | null
   onVote: (schemeId: string, vote: 'works' | 'broken') => void
+  userId?: string
+  commentCount?: number
 }
 
-export default function SchemeCard({ scheme, index, userVote, onVote }: Props) {
+export default function SchemeCard({ scheme, index, userVote, onVote, userId, commentCount = 0 }: Props) {
   const months = ['ЯНВ','ФЕВ','МАР','АПР','МАЙ','ИЮН','ИЮЛ','АВГ','СЕН','ОКТ','НОЯ','ДЕК']
   const d = new Date(scheme.verified_at)
   const dateTag = `${months[d.getMonth()]} ${d.getFullYear()}`
+
+  const [commentsOpen, setCommentsOpen] = useState(false)
+  const [liveCount, setLiveCount] = useState<number | null>(null)
+  const displayCount = liveCount ?? commentCount
 
   return (
     <div
@@ -52,15 +61,28 @@ export default function SchemeCard({ scheme, index, userVote, onVote }: Props) {
         )}
 
         <div className="flex gap-1.5 flex-wrap mb-2.5">
-          {scheme.cost_usd && <Tag>~${scheme.cost_usd}</Tag>}
-          {scheme.duration_hours && <Tag>~{scheme.duration_hours > 48 ? `${Math.round(scheme.duration_hours / 24)} дн` : `${scheme.duration_hours}ч`}</Tag>}
+          {scheme.cost_usd != null && <Tag>~${scheme.cost_usd}</Tag>}
+          {scheme.duration_hours != null && <Tag>~{scheme.duration_hours > 48 ? `${Math.round(scheme.duration_hours / 24)} дн` : `${scheme.duration_hours}ч`}</Tag>}
           <Tag>{dateTag}</Tag>
         </div>
 
         <div className="flex gap-1.5 pt-2.5 border-t" style={{ borderColor: 'var(--border)' }}>
           <VoteBtn emoji="👍" count={scheme.works_count} active={userVote === 'works'} type="works" onClick={() => onVote(scheme.id, 'works')} />
           <VoteBtn emoji="👎" count={scheme.broken_count} active={userVote === 'broken'} type="broken" onClick={() => onVote(scheme.id, 'broken')} />
+          <CommentsBtn
+            count={displayCount}
+            active={commentsOpen}
+            onClick={() => setCommentsOpen(o => !o)}
+          />
         </div>
+
+        {commentsOpen && (
+          <SchemeCommentsThread
+            schemeId={scheme.id}
+            userId={userId}
+            onCountChange={setLiveCount}
+          />
+        )}
       </div>
     </div>
   )
@@ -87,6 +109,23 @@ function VoteBtn({ emoji, count, active, type, onClick }: { emoji: string; count
       }}
     >
       {emoji} <span>{count}</span>
+    </button>
+  )
+}
+
+function CommentsBtn({ count, active, onClick }: { count: number; active: boolean; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className="flex-1 border rounded py-1.5 flex items-center justify-center gap-1 text-xs font-medium transition-all duration-150"
+      style={{
+        borderColor: active ? 'var(--text3)' : 'var(--border)',
+        color: active ? 'var(--text2)' : 'var(--text3)',
+        background: active ? 'var(--bg3)' : 'transparent',
+      }}
+      aria-expanded={active}
+    >
+      <MessageSquare size={12} strokeWidth={1.8} /> <span>{count}</span>
     </button>
   )
 }

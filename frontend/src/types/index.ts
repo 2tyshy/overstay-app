@@ -24,6 +24,7 @@ export interface VisaEntry {
 
 export interface Scheme {
   id: string
+  author_id?: string | null
   passport: PassportCountry
   from_country: string
   to_country: string
@@ -42,6 +43,14 @@ export interface SchemeVote {
   user_id: string
   scheme_id: string
   vote: 'works' | 'broken'
+}
+
+export interface SchemeComment {
+  id: string
+  scheme_id: string
+  user_id: string
+  content: string
+  created_at: string
 }
 
 export interface VisaRule {

@@ -2,65 +2,163 @@ import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import type { Scheme } from '@/types'
 
+export interface UseSchemesState {
+  schemes: Scheme[]
+  votes: Record<string, 'works' | 'broken'>
+  loading: boolean
+  error: string | null
+}
+
+export interface NewSchemeInput {
+  passport: string
+  from_country: string
+  to_country: string
+  border_crossing?: string
+  cost_usd?: number
+  duration_hours?: number
+  description: string
+  tip?: string
+}
+
+/**
+ * Schemes + votes, sourced from Supabase. This replaces the old localStorage
+ * approach so schemes are shared across users and votes persist across devices.
+ *
+ * The voting path goes through the `apply_scheme_vote` RPC (SECURITY DEFINER)
+ * so we get atomic counter updates without granting blanket UPDATE on schemes.
+ */
 export function useSchemes(passport: string, userId: string | undefined) {
   const [schemes, setSchemes] = useState<Scheme[]>([])
   const [votes, setVotes] = useState<Record<string, 'works' | 'broken'>>({})
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    async function fetch() {
-      const { data: schemeData } = await supabase
+  const fetchAll = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const { data: schemeData, error: schemeErr } = await supabase
         .from('schemes')
         .select('*')
         .eq('passport', passport)
         .order('works_count', { ascending: false })
 
-      if (schemeData) setSchemes(schemeData)
+      if (schemeErr) throw schemeErr
+      setSchemes(schemeData ?? [])
 
       if (userId) {
-        const { data: voteData } = await supabase
+        const { data: voteData, error: voteErr } = await supabase
           .from('scheme_votes')
           .select('scheme_id, vote')
           .eq('user_id', userId)
 
-        if (voteData) {
-          const map: Record<string, 'works' | 'broken'> = {}
-          voteData.forEach((v: { scheme_id: string; vote: 'works' | 'broken' }) => { map[v.scheme_id] = v.vote })
-          setVotes(map)
-        }
+        if (voteErr) throw voteErr
+        const map: Record<string, 'works' | 'broken'> = {}
+        voteData?.forEach((v: { scheme_id: string; vote: 'works' | 'broken' }) => { map[v.scheme_id] = v.vote })
+        setVotes(map)
+      } else {
+        setVotes({})
       }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e)
+      setError(msg)
+    } finally {
       setLoading(false)
     }
-    fetch()
   }, [passport, userId])
 
+  useEffect(() => { fetchAll() }, [fetchAll])
+
+  /**
+   * Toggle a vote. If the user already voted `voteType`, it's removed.
+   * If they voted the opposite, we delete the old row and insert the new one
+   * in two separate calls (upsert would otherwise not flip to an existing row
+   * with the same PK for the other direction — but since scheme_votes PK is
+   * (user_id, scheme_id), upsert with a new vote value does update it. We
+   * still delete-then-insert for the toggle-off case for clarity.)
+   *
+   * Counters (works_count / broken_count on schemes) are maintained by an
+   * AFTER trigger on scheme_votes (migration 003). No RPC to call or grant.
+   * Client writes scheme_votes — trigger recalculates.
+   */
   const vote = useCallback(async (schemeId: string, voteType: 'works' | 'broken') => {
     if (!userId) return
     const existing = votes[schemeId]
+    const toggling = existing === voteType
+    const finalVote: 'works' | 'broken' | null = toggling ? null : voteType
 
-    if (existing === voteType) {
-      await supabase.from('scheme_votes').delete().eq('user_id', userId).eq('scheme_id', schemeId)
-      setVotes(prev => { const n = { ...prev }; delete n[schemeId]; return n })
-      const field = voteType === 'works' ? 'works_count' : 'broken_count'
-      const scheme = schemes.find(s => s.id === schemeId)
-      if (scheme) {
-        await supabase.from('schemes').update({ [field]: Math.max(0, scheme[field] - 1) }).eq('id', schemeId)
-        setSchemes(prev => prev.map(s => s.id === schemeId ? { ...s, [field]: Math.max(0, s[field] - 1) } : s))
+    // Optimistic UI — updated again after refetch, so drift self-heals
+    setVotes(prev => {
+      const next = { ...prev }
+      if (finalVote) next[schemeId] = finalVote
+      else delete next[schemeId]
+      return next
+    })
+    setSchemes(prev => prev.map(s => {
+      if (s.id !== schemeId) return s
+      let works = s.works_count
+      let broken = s.broken_count
+      if (existing === 'works') works = Math.max(0, works - 1)
+      if (existing === 'broken') broken = Math.max(0, broken - 1)
+      if (finalVote === 'works') works += 1
+      if (finalVote === 'broken') broken += 1
+      return { ...s, works_count: works, broken_count: broken }
+    }))
+
+    try {
+      if (finalVote === null) {
+        const { error: delErr } = await supabase.from('scheme_votes').delete()
+          .eq('user_id', userId).eq('scheme_id', schemeId)
+        if (delErr) throw delErr
+      } else {
+        const { error: upErr } = await supabase.from('scheme_votes')
+          .upsert({ user_id: userId, scheme_id: schemeId, vote: finalVote })
+        if (upErr) throw upErr
       }
-    } else {
-      await supabase.from('scheme_votes').upsert({ user_id: userId, scheme_id: schemeId, vote: voteType })
-      setVotes(prev => ({ ...prev, [schemeId]: voteType }))
-      const scheme = schemes.find(s => s.id === schemeId)
-      if (scheme) {
-        const inc = voteType === 'works' ? 'works_count' : 'broken_count'
-        const dec = voteType === 'works' ? 'broken_count' : 'works_count'
-        const updates: Record<string, number> = { [inc]: scheme[inc] + 1 }
-        if (existing) updates[dec] = Math.max(0, scheme[dec] - 1)
-        await supabase.from('schemes').update(updates).eq('id', schemeId)
-        setSchemes(prev => prev.map(s => s.id === schemeId ? { ...s, ...updates } : s))
+      // Trigger has updated the counter — pull the fresh value for this scheme
+      const { data: fresh } = await supabase
+        .from('schemes')
+        .select('works_count, broken_count')
+        .eq('id', schemeId)
+        .single()
+      if (fresh) {
+        setSchemes(prev => prev.map(s => s.id === schemeId
+          ? { ...s, works_count: fresh.works_count, broken_count: fresh.broken_count }
+          : s))
       }
+    } catch (e) {
+      // Rollback optimistic update on failure — refetch ground truth
+      await fetchAll()
+      throw e
     }
-  }, [userId, votes, schemes])
+  }, [userId, votes, fetchAll])
 
-  return { schemes, votes, loading, vote }
+  /**
+   * Insert a new user-authored scheme. Returns the created row (with server id)
+   * so UI can navigate / scroll to it.
+   */
+  const addScheme = useCallback(async (input: NewSchemeInput): Promise<Scheme | null> => {
+    if (!userId) return null
+    const { data, error: insertErr } = await supabase
+      .from('schemes')
+      .insert({
+        author_id: userId,
+        passport: input.passport,
+        from_country: input.from_country,
+        to_country: input.to_country,
+        border_crossing: input.border_crossing || null,
+        cost_usd: input.cost_usd ?? null,
+        duration_hours: input.duration_hours ?? null,
+        description: input.description,
+        tip: input.tip || null,
+      })
+      .select()
+      .single()
+
+    if (insertErr) throw insertErr
+    if (data) setSchemes(prev => [data as Scheme, ...prev])
+    return (data as Scheme) ?? null
+  }, [userId])
+
+  return { schemes, votes, loading, error, vote, addScheme, refetch: fetchAll }
 }
