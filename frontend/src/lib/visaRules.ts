@@ -122,8 +122,9 @@ export const COUNTRY_DATA: Record<string, CountryData> = {
       UA: 'Безвиз 30 дней',
       KZ: 'Безвиз 30 дней',
     },
+    // No "visa free 60" option: RU suspended, UA/KZ capped at 30.
+    // Listing it caused computeMaxDays() to clamp 60→30 silently, masking the rule.
     visa_options: [
-      { label: 'visa free 60', days: 60 },
       { label: 'visa free 30', days: 30 },
     ],
   },
@@ -161,9 +162,15 @@ export function computeMaxDays(
     o.label.toLowerCase().replace(/[_-]/g, ' ').replace(/\s+/g, ' ').trim() === normalized
   )
   if (option) {
-    // Cap at passport's max (Korea UA=30 even though label says "visa free 60")
-    return Math.min(option.days, cd.max_days[passport])
+    // Trust explicit option selection. visa_options is curated per country and
+    // must already exclude passport-incompatible options (e.g. KR no longer lists
+    // "visa free 60" because no RU/UA/KZ passport actually gets 60 days).
+    // Earlier versions clamped option.days to max_days[passport], which silently
+    // turned DTV 180 into TH's default 60 and VOA 60 into ID's default 30.
+    return option.days
   }
+  // Unrecognized visa_type — fall back to the last number in the string, but cap
+  // at the country's default (we don't know what rule they meant, so be conservative).
   return Math.min(fallback, cd.max_days[passport])
 }
 
