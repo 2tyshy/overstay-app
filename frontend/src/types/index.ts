@@ -77,10 +77,11 @@ export type Screen = 'status' | 'schemes' | 'next'
 export const COUNTRY_FLAGS: Record<string, string> = {
   VN: '🇻🇳', TH: '🇹🇭', KH: '🇰🇭', LA: '🇱🇦',
   MY: '🇲🇾', ID: '🇮🇩', PH: '🇵🇭', KR: '🇰🇷',
-  RU: '🇷🇺', UA: '🇺🇦', KZ: '🇰🇿',
+  SG: '🇸🇬', RU: '🇷🇺', UA: '🇺🇦', KZ: '🇰🇿',
 }
 
 export const COUNTRY_NAMES: Record<string, string> = {
   VN: 'Вьетнам', TH: 'Таиланд', KH: 'Камбоджа', LA: 'Лаос',
   MY: 'Малайзия', ID: 'Индонезия', PH: 'Филиппины', KR: 'Корея',
+  SG: 'Сингапур', RU: 'Россия', UA: 'Украина', KZ: 'Казахстан',
 }

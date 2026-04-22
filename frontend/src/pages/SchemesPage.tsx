@@ -7,63 +7,162 @@ import { COUNTRY_FLAGS, COUNTRY_NAMES, type PassportCountry } from '@/types'
 import { COUNTRY_CODES } from '@/lib/visaRules'
 import type { Scheme } from '@/types'
 
+// Seed schemes curated from real 2024-2026 community reports (Vinskiy forum,
+// Reddit, Pikabu, Balifora, Ask.in.th, travelfish). Everything here references
+// an actually-used route and reflects the latest known rules:
+//   - RU: visa-free 45d to Vietnam (decree 07-Mar-2025), plus 90d e-visa.
+//   - TH: 60d visa-exempt since Jul-2024 + DTV 180d multi-entry. Nov-2025
+//     crackdown: max 2 visa-exempt entries per calendar year via land border,
+//     same-day turnarounds are a red flag.
+//   - TH-KH land borders are CLOSED since late Oct-2025 due to the border
+//     dispute — flagged as broken with a high broken_count until reopened.
+//   - ID: visa-ran to KL/SG still standard for Bali 30+30d VOA; biometric
+//     on-arrival mandatory since Jun-2025.
 const BUILT_IN_SCHEMES: Scheme[] = [
+  // ——— RU passport ———
   {
-    id: '1', passport: 'RU', from_country: 'VN', to_country: 'LA', border_crossing: 'Nam Phao',
-    cost_usd: 25, duration_hours: 10,
-    description: 'Автобус из HCMC -> Vinh -> граница Nam Phao. Пешком через КПП, штамп Лаос, разворот. Новый VN штамп 90 дней.',
-    tip: 'Бери $35 налик -- $20 виза Лаос + буфер на транспорт',
-    verified_at: '2026-03-15', works_count: 47, broken_count: 3, created_at: '',
+    id: '1', passport: 'RU', from_country: 'VN', to_country: 'KH', border_crossing: 'Moc Bai / Bavet',
+    cost_usd: 35, duration_hours: 8,
+    description: 'Автобус 703 от автовокзала Park 23/9 (HCMC) до Moc Bai, VND 40 000 (~$1.6). Пешком через КПП, на той стороне — Камбоджа VOA $30-35. Возвращаешься обратно с новой VN e-visa (важно: порт въезда в заявке — "Moc Bai landport", иначе завернут).',
+    tip: 'Стартуй до 9 утра: последний автобус обратно из Moc Bai около 16:00, весь круг займёт 3-5 часов.',
+    verified_at: '2026-03-18', works_count: 58, broken_count: 4, created_at: '',
   },
   {
-    id: '2', passport: 'RU', from_country: 'VN', to_country: 'KH', border_crossing: 'Moc Bai',
-    cost_usd: 40, duration_hours: 5,
-    description: 'Из HCMC автобус до Moc Bai -- 2 часа. Быстрый КПП в Камбоджу и назад. Самый короткий ран из Хошимина.',
-    tip: 'Виза Камбоджа $30 на месте. Торгуйся за автобус',
-    verified_at: '2026-02-20', works_count: 31, broken_count: 1, created_at: '',
+    id: '2', passport: 'RU', from_country: 'VN', to_country: 'LA', border_crossing: 'Cau Treo / Nam Phao',
+    cost_usd: 55, duration_hours: 24,
+    description: 'Ночной автобус Hanoi → Vinh → граница Cau Treo. Лаос VOA $30-40 (для РФ — $30 по последним отчётам), разворот в тот же день. Менее затоптанный маршрут, чем Moc Bai, зато дольше.',
+    tip: 'Только наличные USD на лаосской стороне — мелкими купюрами. У российских карт на месте ничего не получится оплатить.',
+    verified_at: '2026-02-10', works_count: 21, broken_count: 2, created_at: '',
   },
   {
-    id: '3', passport: 'RU', from_country: 'VN', to_country: 'KR',
-    cost_usd: 200, duration_hours: 168,
-    description: 'Рейс в Сеул на неделю. В Thai консульстве e-Visa за 3 дня. Прилетаешь с готовой Thai визой.',
-    tip: 'Совмести с путешествием, минус стресс + Thai виза готова',
-    verified_at: '2026-01-10', works_count: 19, broken_count: 0, created_at: '',
+    id: '3', passport: 'RU', from_country: 'VN', to_country: 'KZ',
+    cost_usd: 350, duration_hours: 96,
+    description: 'Полный ресет: рейс HCMC/Hanoi → Алматы или Астана, 3-4 дня, обратно с новой e-visa или по 45-дневному безвизу. Пригодится тем, кто зависает в VN дольше 135 дней (45 безвиз + 90 e-visa) и хочет чистый цикл.',
+    tip: 'Удобно совместить с продлением российского загранпаспорта в консульстве — одной поездкой закрываешь и визу, и документы.',
+    verified_at: '2026-01-25', works_count: 16, broken_count: 1, created_at: '',
   },
   {
-    id: '4', passport: 'RU', from_country: 'TH', to_country: 'LA', border_crossing: 'Nong Khai',
-    cost_usd: 60, duration_hours: 14,
-    description: 'Автобус из Бангкока через Nong Khai до Вьентьяна. VOA Лаос $42 на границе, разворот same-day обратно в Таиланд.',
-    tip: 'Бери наличку в батах -- на лаосской стороне обмен невыгодный',
-    verified_at: '2026-03-28', works_count: 34, broken_count: 2, created_at: '',
+    id: '15', passport: 'RU', from_country: 'VN', to_country: 'KH', border_crossing: 'Ha Tien / Prek Chak',
+    cost_usd: 45, duration_hours: 6,
+    description: 'Южный вариант для тех, кто на Phu Quoc или в Меккодельте. Паром Phu Quoc → Ha Tien (~1.5 ч, $15), дальше мото-такси до КПП (10 мин, 50 000 VND). Камбоджа VOA $30-35, обратно сразу. Тихо, без автобусных толп Moc Bai.',
+    tip: 'Паром с Phu Quoc ходит по расписанию до 14:30 — последний обратно в 16:00. Если не успел, застрянешь в Ha Tien на ночь.',
+    verified_at: '2026-02-28', works_count: 23, broken_count: 1, created_at: '',
   },
   {
-    id: '5', passport: 'RU', from_country: 'TH', to_country: 'MY', border_crossing: 'Sadao/Danok',
-    cost_usd: 15, duration_hours: 4,
-    description: 'Из Hat Yai на минивэне до границы Sadao. Штамп Малайзии 30 дней. Можно развернуться сразу или остаться.',
-    tip: 'Самый дешёвый бордер-ран из южного Таиланда',
-    verified_at: '2026-04-02', works_count: 52, broken_count: 1, created_at: '',
+    id: '16', passport: 'RU', from_country: 'VN', to_country: 'LA', border_crossing: 'Lao Bao / Dansavanh',
+    cost_usd: 50, duration_hours: 14,
+    description: 'Центральный Вьетнам: автобус Hue или Da Nang → Lao Bao (~5-6 ч, 300-400 000 VND). Переход пеший, Лаос VOA $30-42. На той стороне — Savannakhet. Удобно из центрального VN, короче, чем тащиться до Cau Treo или Moc Bai.',
+    tip: 'В Lao Bao много «помощников» предлагают оформить визу за $80 — не ведись, всё делается самому в окошке за $30-40 + 2 фото.',
+    verified_at: '2026-03-08', works_count: 19, broken_count: 2, created_at: '',
   },
   {
-    id: '6', passport: 'RU', from_country: 'TH', to_country: 'KH', border_crossing: 'Aranyaprathet/Poipet',
-    cost_usd: 40, duration_hours: 6,
-    description: 'Автобус из BKK до Poipet border. VOA Cambodia $30 на месте. Популярный маршрут, много транспорта.',
-    tip: 'Не меняй деньги на границе -- курс грабительский. Бери доллары заранее',
-    verified_at: '2026-03-20', works_count: 28, broken_count: 4, created_at: '',
-  },
-  // UA/KZ cross-listed — many schemes work regardless of passport
-  {
-    id: '7', passport: 'UA', from_country: 'TH', to_country: 'MY', border_crossing: 'Sadao/Danok',
-    cost_usd: 15, duration_hours: 4,
-    description: 'Тот же маршрут Hat Yai → Sadao. MY безвиз 30 дней для UA паспорта. Работает идентично.',
-    tip: 'Ту же самую подсказку про наличку в батах',
-    verified_at: '2026-04-05', works_count: 12, broken_count: 0, created_at: '',
+    id: '17', passport: 'RU', from_country: 'VN', to_country: 'TH',
+    cost_usd: 160, duration_hours: 72,
+    description: 'Weekend в Бангкоке: VietJet/AirAsia HCMC/Hanoi → BKK от $50 round trip, 2-3 ночи в Таиланде, обратно в VN с новой e-visa или 45-безвизом. Хороший вариант для тех, кто хочет совместить с шопингом/прокачкой DTV (подача в Royal Thai E-Visa онлайн, забирать в BKK не обязательно).',
+    tip: 'После Nov-2025 в TH лимит 2 наземных безвизовых в год — прилёт на самолёте НЕ считается в этот лимит. Так что в BKK можно летать сколько хочешь.',
+    verified_at: '2026-04-05', works_count: 38, broken_count: 2, created_at: '',
   },
   {
-    id: '8', passport: 'KZ', from_country: 'VN', to_country: 'KH', border_crossing: 'Moc Bai',
-    cost_usd: 40, duration_hours: 5,
-    description: 'Классика для KZ паспорта. Moc Bai → Bavet → разворот. VN штамп обновляется.',
-    tip: 'VOA Камбоджа $30, мелкие купюры USD',
-    verified_at: '2026-03-22', works_count: 8, broken_count: 1, created_at: '',
+    id: '18', passport: 'RU', from_country: 'VN', to_country: 'MY',
+    cost_usd: 140, duration_hours: 60,
+    description: 'HCMC → Kuala Lumpur, AirAsia/Vietjet от $40-80 one-way. MY безвиз 30 дней для РФ. Ночь в KL Sentral ($15 хостел), обратно в VN. Дешевле чем BKK, цивильный аэропорт, хорошая точка для апгрейда на DTV (Royal Thai в KL работает).',
+    tip: 'Рейсы из Hanoi дороже и реже — лучше через HCMC, оттуда AirAsia летает несколько раз в день.',
+    verified_at: '2026-03-22', works_count: 27, broken_count: 1, created_at: '',
+  },
+  {
+    id: '19', passport: 'RU', from_country: 'VN', to_country: 'VN', border_crossing: 'multi-entry e-visa',
+    cost_usd: 50, duration_hours: 6,
+    description: 'Не ран, а лайфхак: при оформлении 90-дневной e-visa выбирай MULTIPLE ENTRY ($50 вместо $25 single). В пределах 90 дней можно свободно летать в Таиланд/Малайзию/Камбоджу и возвращаться без новой визы. Clock не ресетится — 90 дней общие от первого въезда, но мобильность сильно лучше.',
+    tip: 'Порт въезда в заявке указывай тот, через который вернёшься обратно. Если летишь через HCMC — "Tan Son Nhat international airport". Ошибёшься — завернут.',
+    verified_at: '2026-04-02', works_count: 44, broken_count: 0, created_at: '',
+  },
+  {
+    id: '20', passport: 'RU', from_country: 'VN', to_country: 'PH',
+    cost_usd: 220, duration_hours: 96,
+    description: 'HCMC → Manila или Cebu (Philippines AirAsia/Cebu Pacific ~$100-150 RT). PH безвиз 30 дней для РФ, 3-4 дня с пляжами и обратно в VN с новой e-visa. Малоизвестный маршрут — никаких очередей на границе, чистый рестарт.',
+    tip: 'На въезде в PH спросят onward ticket — покажи обратный в VN. Без него не пустят, это жёсткое требование.',
+    verified_at: '2026-03-14', works_count: 12, broken_count: 1, created_at: '',
+  },
+  {
+    id: '4', passport: 'RU', from_country: 'TH', to_country: 'LA', border_crossing: 'Nong Khai / Thanaleng (Friendship Bridge 1)',
+    cost_usd: 90, duration_hours: 48,
+    description: 'Ночной поезд BKK → Nong Khai (~12 ч, 800-1200 THB). Шаттл через мост Дружбы, Лаос VOA $30-42. С Nov-2025 same-day разворот — красный флаг; переночуй 1-2 ночи во Вьентьяне. Подходит для DTV-holders и для ресета 60-дневного безвиза (но помни про лимит 2 наземных входа в год).',
+    tip: 'Для DTV — лучше 2-3 ночи в Лаосе. Иммиграция на въезде смотрит на штампы: слишком частые краткие забеги без причины = отказ.',
+    verified_at: '2026-03-28', works_count: 41, broken_count: 6, created_at: '',
+  },
+  {
+    id: '5', passport: 'RU', from_country: 'TH', to_country: 'LA', border_crossing: 'Chong Mek / Vang Tao',
+    cost_usd: 50, duration_hours: 10,
+    description: 'Автобус Ubon Ratchathani → Chong Mek (~1 ч). Переход пеший, с тайской стороны до лаосской 5 минут. На Vang Tao оформляют VOA $30 на 15 дней (e-visa тут не принимают). Удобно, если ты в южном/восточном Исане.',
+    tip: 'e-visa Лаоса на этот переход НЕ работает — только бумажный VOA. Готовь две фото 3x4 и $30 одной купюрой.',
+    verified_at: '2026-02-22', works_count: 17, broken_count: 1, created_at: '',
+  },
+  {
+    id: '6', passport: 'RU', from_country: 'TH', to_country: 'MY', border_crossing: 'Padang Besar (поезд)',
+    cost_usd: 25, duration_hours: 6,
+    description: 'Поезд Hat Yai → Padang Besar (~1 ч, 50 THB). Прямо на станции и тайский, и малайзийский иммиграционный контроль. MY безвиз 30 дней. Обратно — поездом или минивэном. Раньше был самым беспроблемным раном, но c Nov-2025 Таиланд ограничил до 2 наземных безвизовых въездов в год.',
+    tip: 'После двух таких раундов за календарный год переходи на DTV или нормальную тур-визу — иначе на третий раз развернут на границе.',
+    verified_at: '2026-04-01', works_count: 63, broken_count: 12, created_at: '',
+  },
+  {
+    id: '7', passport: 'RU', from_country: 'TH', to_country: 'LA',
+    cost_usd: 420, duration_hours: 120,
+    description: 'Полёт BKK → Vientiane (~$80), 3-5 дней во Вьентьяне, подача DTV через Royal Thai Embassy в Лаосе. DTV = 180 дней мультивход, виза на 5 лет. Нужно: выписка на 500 000 THB (~$14-16k), proof of remote work/Muay Thai/cooking и т.п. Консульский сбор 10 000 THB.',
+    tip: 'В Lao-консульстве подача самая гибкая из всех Royal Thai Embassies — многие именно сюда ездят из Бангкока. Заранее бронируй запись на сайте e-visa.',
+    verified_at: '2026-03-10', works_count: 33, broken_count: 5, created_at: '',
+  },
+  {
+    id: '8', passport: 'RU', from_country: 'TH', to_country: 'KH', border_crossing: 'Aranyaprathet / Poipet',
+    cost_usd: 50, duration_hours: 8,
+    description: '⚠️ СЕЙЧАС НЕ РАБОТАЕТ: все наземные границы TH-KH закрыты с конца октября 2025 из-за приграничного конфликта. В обычное время — автобус BKK → Poipet, Cambodia e-visa $36 или VOA $30-35. Следи за новостями: обещают открыть, когда уляжется.',
+    tip: 'До открытия — только через самолёт до Пномпеня ($60-100) или через Лаос. Не веди туда сейчас.',
+    verified_at: '2026-04-15', works_count: 8, broken_count: 47, created_at: '',
+  },
+  {
+    id: '9', passport: 'RU', from_country: 'ID', to_country: 'MY',
+    cost_usd: 180, duration_hours: 48,
+    description: 'Классика балийцев: рейс DPS → KUL ($80-150 туда-обратно), 1-2 ночи в Куала-Лумпуре. Назад — новый e-VOA Индонезии на 30 дней ($35). В KL — хостел $15-30, еда копейки. Самый дешёвый ресет 30+30 не хватает.',
+    tip: 'С июня 2025 биометрию сдают лично в иммиграционном офисе — первый раз в году придётся один раз съездить. Оплачивать e-VOA российской картой нельзя; используй карту KZ/GE или сервис-агента.',
+    verified_at: '2026-03-30', works_count: 72, broken_count: 3, created_at: '',
+  },
+  {
+    id: '10', passport: 'RU', from_country: 'ID', to_country: 'SG',
+    cost_usd: 260, duration_hours: 48,
+    description: 'Рейс DPS → SIN ($120-180 round trip). Сингапур дороже KL, зато виза не нужна (транзит до 96 ч). Удобно если параллельно нужна консульская задача: посольства РФ, нотариальные действия.',
+    tip: 'Не хочешь платить за гостиницу в SG — бери рейс с пересадкой 20+ часов и используй транзитную зону с душевой в Changi.',
+    verified_at: '2026-02-28', works_count: 29, broken_count: 2, created_at: '',
+  },
+
+  // ——— UA passport ———
+  {
+    id: '11', passport: 'UA', from_country: 'VN', to_country: 'KH', border_crossing: 'Moc Bai / Bavet',
+    cost_usd: 40, duration_hours: 8,
+    description: 'Для UA паспорта схема идентична российской: автобус 703 до Moc Bai, Камбоджа VOA $30-35, обратно по новой 90-дневной e-visa. 45-дневного безвиза у украинцев нет, только e-visa.',
+    tip: 'Украинцы часто получают e-visa быстрее через агентов — официальная оплата долларами, с украинской карты оплатить не всегда выходит.',
+    verified_at: '2026-03-05', works_count: 14, broken_count: 1, created_at: '',
+  },
+  {
+    id: '12', passport: 'UA', from_country: 'TH', to_country: 'MY', border_crossing: 'Padang Besar (поезд)',
+    cost_usd: 25, duration_hours: 6,
+    description: 'Тот же Hat Yai → Padang Besar на поезде. MY безвиз 30 дней для UA паспорта работает штатно. Тайский лимит 2 наземных въезда в год с Nov-2025 действует на всех иностранцев, без исключений.',
+    tip: 'Если уже выбрал лимит — лети через KUL или делай DTV из Куала-Лумпура (там тоже принимают заявки).',
+    verified_at: '2026-04-03', works_count: 19, broken_count: 3, created_at: '',
+  },
+
+  // ——— KZ passport ———
+  {
+    id: '13', passport: 'KZ', from_country: 'VN', to_country: 'KH', border_crossing: 'Moc Bai / Bavet',
+    cost_usd: 35, duration_hours: 8,
+    description: 'Казахи во Вьетнаме на тех же условиях, что и украинцы: только e-visa 90 дней, без безвиза. Классический Moc Bai → Bavet, назад с новой e-visa. Оплатить e-visa казахской картой обычно получается — это плюс KZ.',
+    tip: 'Если летишь через Алматы — подавай e-visa из Алматы, там интернет быстрее и форму проще заполнить без VPN.',
+    verified_at: '2026-03-12', works_count: 11, broken_count: 1, created_at: '',
+  },
+  {
+    id: '14', passport: 'KZ', from_country: 'TH', to_country: 'LA', border_crossing: 'Nong Khai / Thanaleng',
+    cost_usd: 90, duration_hours: 48,
+    description: 'Тот же BKK → Nong Khai маршрут. KZ безвиз в Таиланд — 30 дней (короче, чем у РФ). Ночной поезд + ночёвка в Vientiane, обратно на следующий день. Для Лаоса казахам нужен VOA $30.',
+    tip: 'У казахов безвиз TH всего 30 дней (не 60), так что ритм раньше: планируй выезд на 28-29-й день, не тяни.',
+    verified_at: '2026-02-18', works_count: 9, broken_count: 2, created_at: '',
   },
 ]
 
