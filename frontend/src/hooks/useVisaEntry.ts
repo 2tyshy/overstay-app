@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
+import { isUuid } from '@/lib/uuid'
 import type { VisaEntry } from '@/types'
 
 export function useVisaEntry(userId: string | undefined) {
@@ -8,7 +9,10 @@ export function useVisaEntry(userId: string | undefined) {
   const [loading, setLoading] = useState(true)
 
   const fetchEntries = useCallback(async () => {
-    if (!userId) return
+    // Skip entirely when running outside Telegram (userId === 'dev'): querying
+    // visa_entries with a non-UUID user_id would hit Postgres' UUID type check
+    // and surface as an opaque error. Read-only browser preview shows empty state.
+    if (!isUuid(userId)) { setLoading(false); return }
     setLoading(true)
 
     const { data } = await supabase
@@ -28,7 +32,7 @@ export function useVisaEntry(userId: string | undefined) {
   useEffect(() => { fetchEntries() }, [fetchEntries])
 
   const addEntry = useCallback(async (entry: { country: string; visa_type: string; entry_date: string }) => {
-    if (!userId) return
+    if (!isUuid(userId)) return  // dev fallback: can't persist to a row keyed by 'dev'
     const { data: rule } = await supabase
       .from('visa_rules')
       .select('max_days')

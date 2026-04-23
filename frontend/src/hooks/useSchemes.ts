@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
+import { isUuid } from '@/lib/uuid'
 import type { Scheme } from '@/types'
 
 /**
@@ -63,7 +64,7 @@ export function useSchemes(passport: string, userId: string | undefined) {
       if (schemeErr) throw schemeErr
       setSchemes(schemeData ?? [])
 
-      if (userId) {
+      if (isUuid(userId)) {
         const { data: voteData, error: voteErr } = await supabase
           .from('scheme_votes')
           .select('scheme_id, vote')
@@ -74,6 +75,8 @@ export function useSchemes(passport: string, userId: string | undefined) {
         voteData?.forEach((v: { scheme_id: string; vote: 'works' | 'broken' }) => { map[v.scheme_id] = v.vote })
         setVotes(map)
       } else {
+        // No real user (opened outside Telegram, dev fallback) — skip votes
+        // query entirely. Schemes list still loads as read-only.
         setVotes({})
       }
     } catch (e) {
@@ -98,7 +101,7 @@ export function useSchemes(passport: string, userId: string | undefined) {
    * Client writes scheme_votes — trigger recalculates.
    */
   const vote = useCallback(async (schemeId: string, voteType: 'works' | 'broken') => {
-    if (!userId) return
+    if (!isUuid(userId)) return  // dev fallback: no real user to attribute the vote to
     const existing = votes[schemeId]
     const toggling = existing === voteType
     const finalVote: 'works' | 'broken' | null = toggling ? null : voteType
@@ -154,7 +157,7 @@ export function useSchemes(passport: string, userId: string | undefined) {
    * so UI can navigate / scroll to it.
    */
   const addScheme = useCallback(async (input: NewSchemeInput): Promise<Scheme | null> => {
-    if (!userId) return null
+    if (!isUuid(userId)) return null  // dev fallback: can't set author_id to 'dev'
     const { data, error: insertErr } = await supabase
       .from('schemes')
       .insert({

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
+import { isUuid } from '@/lib/uuid'
 import type { SchemeComment } from '@/types'
 
 /**
@@ -74,7 +75,7 @@ export function useSchemeComments(schemeId: string | null, userId: string | unde
   }, [schemeId])
 
   const addComment = useCallback(async (content: string): Promise<SchemeComment | null> => {
-    if (!schemeId || !userId) return null
+    if (!schemeId || !isUuid(userId)) return null  // dev fallback: no real user
     const trimmed = content.trim()
     if (!trimmed) return null
 
@@ -94,7 +95,7 @@ export function useSchemeComments(schemeId: string | null, userId: string | unde
   }, [schemeId, userId])
 
   const deleteComment = useCallback(async (commentId: string) => {
-    if (!userId) return
+    if (!isUuid(userId)) return  // dev fallback: no real user to delete on behalf of
     // Optimistic
     setComments(prev => prev.filter(c => c.id !== commentId))
     const { error: delErr } = await supabase
