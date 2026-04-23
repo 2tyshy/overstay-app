@@ -55,7 +55,12 @@ function MiniCalendar({ entryDate, maxDays, onClose }: { entryDate: string; maxD
   return createPortal(
     <div
       className="fixed inset-0 z-[100] flex items-center justify-center p-4"
-      onClick={onClose}
+      // NB: stop propagation before calling onClose. The calendar is rendered
+      // via createPortal to document.body, but React bubbles synthetic events
+      // through the *React* tree, not the DOM tree — so without stopPropagation
+      // the click bubbles back up to RingProgress's onClick, which TOGGLES the
+      // calendar open again and masks the close. See the parent ring div below.
+      onClick={(e) => { e.stopPropagation(); onClose() }}
       style={{ background: 'rgba(0,0,0,0.35)' }}
     >
       <div

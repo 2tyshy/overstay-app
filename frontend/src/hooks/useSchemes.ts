@@ -2,6 +2,23 @@ import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import type { Scheme } from '@/types'
 
+/**
+ * Supabase errors are plain objects ({ message, code, details, hint }) — not
+ * Error instances — so `String(e)` gives "[object Object]". Pick the most
+ * informative field available and expose it, while logging the full object for
+ * debugging.
+ */
+function formatSupabaseError(e: unknown): string {
+  if (e instanceof Error) return e.message
+  if (e && typeof e === 'object') {
+    const err = e as { message?: string; details?: string; hint?: string; code?: string }
+    // eslint-disable-next-line no-console
+    console.error('[useSchemes] supabase error', e)
+    return err.message || err.details || err.hint || err.code || JSON.stringify(e)
+  }
+  return String(e)
+}
+
 export interface UseSchemesState {
   schemes: Scheme[]
   votes: Record<string, 'works' | 'broken'>
@@ -60,8 +77,7 @@ export function useSchemes(passport: string, userId: string | undefined) {
         setVotes({})
       }
     } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e)
-      setError(msg)
+      setError(formatSupabaseError(e))
     } finally {
       setLoading(false)
     }
