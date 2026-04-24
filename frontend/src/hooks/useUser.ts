@@ -1,9 +1,14 @@
 import { useState, useEffect } from 'react'
 import { getOrCreateUser, setTelegramContext } from '@/lib/supabase'
 import { getTelegramId } from '@/lib/telegram'
-import type { User } from '@/types'
+import type { User, PassportCountry } from '@/types'
 
-export function useUser() {
+/**
+ * Resolve the current Supabase user. Inside Telegram we upsert by
+ * `telegram_id`; outside we fall back to a synthetic `{id: 'dev'}`
+ * which every downstream hook recognises via `isUuid` and skips.
+ */
+export function useUser(passportCountry: PassportCountry = 'RU') {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -16,11 +21,14 @@ export function useUser() {
         return
       }
       await setTelegramContext(telegramId)
-      const u = await getOrCreateUser(telegramId, 'RU')
+      const u = await getOrCreateUser(telegramId, passportCountry)
       setUser(u)
       setLoading(false)
     }
     init()
+    // intentionally only re-run when telegramId changes (never) — passport
+    // changes post-mount shouldn't re-upsert; update flows handle that.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   return { user, loading }

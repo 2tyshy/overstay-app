@@ -12,10 +12,8 @@ import CameraSheet from '@/components/CameraSheet'
 import Toast from '@/components/Toast'
 import type { Screen, VisaEntry, PassportCountry } from '@/types'
 import { computeMaxDays } from '@/lib/visaRules'
-import { calcDeadline, calcDaysLeft, parseLocalDate, todayLocal, effectiveDeadline } from '@/lib/dates'
+import { calcDeadline, calcDaysLeft, parseLocalDate, todayLocal } from '@/lib/dates'
 import type { OcrResult } from '@/lib/ocr'
-import { useUser } from '@/hooks/useUser'
-import { upsertVisaEntry, deleteVisaEntry } from '@/lib/supabase'
 
 const SCREEN_TITLES: Record<Screen, string> = {
   status: 'Overstay',
@@ -114,47 +112,21 @@ export default function App() {
   const [toast, setToast] = useState<string | null>(null)
   const [ocrPrefill, setOcrPrefill] = useState<OcrResult | null>(null)
 
-  // Resolve/insert the Supabase user row so we have a real UUID to key
-  // visa_entries off. The bot (service_role) reads from visa_entries, so
-  // without this the cron + /check never see anything the user enters.
-  const { user } = useUser(passport)
-  const userId = user?.id
-
   const sorted = useMemo(() => sortEntries(entries), [entries])
 
   useEffect(() => { localStorage.setItem(LS_ENTRIES, JSON.stringify(entries)) }, [entries])
   useEffect(() => { localStorage.setItem(LS_PASSPORT, passport) }, [passport])
 
   // When the user switches passport, recompute max_days + deadline
-  // for entries where the rules differ (e.g. Korea). We also re-apply the
-  // visa_end cap so a shorter visa validity continues to bind.
+  // for entries where the rules differ (e.g. Korea).
   useEffect(() => {
     setEntries(prev => prev.map(entry => {
-      const newRuleMax = computeMaxDays(entry.country, entry.visa_type, passport)
-      if (newRuleMax === 0) return entry
-      const eff = effectiveDeadline(entry.entry_date, newRuleMax, entry.visa_end)
-      if (eff.maxDays === entry.max_days && eff.deadline === entry.deadline) return entry
-      return { ...entry, max_days: eff.maxDays, deadline: eff.deadline, days_left: calcDaysLeft(eff.deadline) }
+      const newMax = computeMaxDays(entry.country, entry.visa_type, passport)
+      if (newMax === 0 || newMax === entry.max_days) return entry
+      const newDeadline = calcDeadline(entry.entry_date, newMax)
+      return { ...entry, max_days: newMax, deadline: newDeadline, days_left: calcDaysLeft(newDeadline) }
     }))
   }, [passport])
-
-  // One-shot backfill: when the user row resolves, mirror every localStorage
-  // entry that isn't already in Supabase. Needed because prior builds only
-  // wrote to localStorage — the bot's cron + /check never saw anything.
-  // Upsert is idempotent, so running this each session is cheap and catches
-  // entries added on other devices too.
-  useEffect(() => {
-    if (!userId) return
-    let cancelled = false
-    ;(async () => {
-      for (const e of entries) {
-        if (cancelled) return
-        await upsertVisaEntry(userId, e)
-      }
-    })()
-    return () => { cancelled = true }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId])
 
   const showToast = useCallback((msg: string) => {
     setToast(msg)
@@ -163,21 +135,16 @@ export default function App() {
 
   const handleDelete = useCallback((id: string) => {
     setEntries(prev => prev.filter(e => e.id !== id))
-    // Fire-and-forget mirror to Supabase. UI stays instant; server catches up.
-    void deleteVisaEntry(userId, id)
     showToast('Запись удалена')
-  }, [showToast, userId])
+  }, [showToast])
 
   const handleSave = useCallback((data: { country: string; visa_type: string; entry_date: string; visa_start?: string; visa_end?: string }) => {
-    const ruleMaxDays = computeMaxDays(data.country, data.visa_type, passport)
-    if (ruleMaxDays === 0) {
+    const maxDays = computeMaxDays(data.country, data.visa_type, passport)
+    if (maxDays === 0) {
       showToast('Виза недоступна для этого паспорта')
       return
     }
-    // visa_end (visa validity expiry) can shorten the effective stay if it's
-    // earlier than entry + ruleMaxDays. This makes the status ring + calendar
-    // reflect the real binding constraint instead of the full category rule.
-    const { deadline, maxDays } = effectiveDeadline(data.entry_date, ruleMaxDays, data.visa_end)
+    const deadline = calcDeadline(data.entry_date, maxDays)
     const newEntry: VisaEntry = {
       id: editEntry?.id ?? genId(),
       user_id: '1',
@@ -199,10 +166,7 @@ export default function App() {
       setEntries(prev => [newEntry, ...prev])
       showToast('Запись добавлена')
     }
-    // Mirror to Supabase so the bot (and /check, and the daily cron) sees it.
-    // Fire-and-forget: UI is already updated, network latency shouldn't block.
-    void upsertVisaEntry(userId, newEntry)
-  }, [editEntry, passport, showToast, userId])
+  }, [editEntry, passport, showToast])
 
   // Copy a text snapshot of all entries to clipboard. We avoid the blob+download
   // approach because Telegram iOS WebView hijacks the navigation and leaves the
