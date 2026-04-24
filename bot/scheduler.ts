@@ -90,6 +90,7 @@ export async function runDeadlineSweep(bot: Telegraf, supabase: SupabaseClient) 
  * we reply with a hint rather than silently failing.
  */
 export async function checkUserStatus(bot: Telegraf, supabase: SupabaseClient, telegramId: number) {
+  console.log(`[check] start telegramId=${telegramId}`)
   const { data: user, error: userErr } = await supabase
     .from('users')
     .select('id, passport_country')
@@ -102,9 +103,24 @@ export async function checkUserStatus(bot: Telegraf, supabase: SupabaseClient, t
     return
   }
   if (!user) {
+    // Front-end registration via `useUser` is unreliable today: `set_config`
+    // ('app.telegram_id', …) does not persist across Supabase HTTP requests
+    // (PgBouncer transaction mode), so the subsequent INSERT into `users` is
+    // blocked by the `users_own` RLS policy and fails silently. Rather than
+    // leaving the user stuck, offer a quick self-registration here — the bot
+    // runs under the service_role key, so it can INSERT regardless of RLS.
     await bot.telegram.sendMessage(
       telegramId,
-      'Не нашёл тебя в базе. Открой приложение — оно заведёт профиль при первом входе.'
+      'Не вижу тебя в базе. Выбери свой паспорт — запишу и покажу статус:',
+      {
+        reply_markup: {
+          inline_keyboard: [[
+            { text: '🇷🇺 RU', callback_data: 'register:RU' },
+            { text: '🇺🇦 UA', callback_data: 'register:UA' },
+            { text: '🇰🇿 KZ', callback_data: 'register:KZ' },
+          ]],
+        },
+      }
     )
     return
   }
@@ -154,12 +170,41 @@ export function startScheduler(bot: Telegraf) {
   })
 }
 
+export type Passport = 'RU' | 'UA' | 'KZ'
+
 /**
- * Returns a function bound to Supabase that /check can call with the caller's
- * telegram_id. Keeping the supabase client behind a closure so index.ts
- * doesn't need to own it.
+ * Upsert a `users` row for this telegram_id with the chosen passport.
+ * Upsert (not plain insert) so a user tapping a different passport button
+ * after a first mistake just updates the existing row.
  */
-export function createUserChecker(bot: Telegraf) {
+export async function registerUser(
+  supabase: SupabaseClient,
+  telegramId: number,
+  passport: Passport
+): Promise<boolean> {
+  const { error } = await supabase
+    .from('users')
+    .upsert(
+      { telegram_id: telegramId, passport_country: passport },
+      { onConflict: 'telegram_id' }
+    )
+  if (error) {
+    console.error('[register] upsert failed:', error)
+    return false
+  }
+  console.log(`[register] ok telegramId=${telegramId} passport=${passport}`)
+  return true
+}
+
+/**
+ * Bundles all Supabase-backed bot actions behind one factory so index.ts
+ * doesn't need its own Supabase client. `check` runs the per-user status
+ * report; `register` upserts a users row after an inline-keyboard tap.
+ */
+export function createBotActions(bot: Telegraf) {
   const supabase = getSupabase()
-  return (telegramId: number) => checkUserStatus(bot, supabase, telegramId)
+  return {
+    check: (telegramId: number) => checkUserStatus(bot, supabase, telegramId),
+    register: (telegramId: number, passport: Passport) => registerUser(supabase, telegramId, passport),
+  }
 }
