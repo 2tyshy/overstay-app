@@ -1,7 +1,28 @@
 import { useState, useEffect } from 'react'
 import { getOrCreateUser, setTelegramContext } from '@/lib/supabase'
-import { getTelegramId } from '@/lib/telegram'
+import { getTelegramId, getTelegramInitData } from '@/lib/telegram'
 import type { User, PassportCountry } from '@/types'
+
+async function fetchTelegramJWT(): Promise<string | null> {
+  const initData = getTelegramInitData()
+  if (!initData) return null
+
+  try {
+    const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/tg-auth`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+      },
+      body: JSON.stringify({ initData }),
+    })
+    if (!res.ok) return null
+    const { token } = await res.json()
+    return token ?? null
+  } catch {
+    return null
+  }
+}
 
 /**
  * Resolve the current Supabase user. Inside Telegram we upsert by
@@ -20,6 +41,11 @@ export function useUser(passportCountry: PassportCountry = 'RU') {
         setLoading(false)
         return
       }
+
+      // Exchange Telegram initData for JWT (Sprint 3 auth infrastructure)
+      // JWT is generated but not used with setSession() yet — Sprint 4 will add RLS
+      await fetchTelegramJWT()
+
       await setTelegramContext(telegramId)
       const u = await getOrCreateUser(telegramId, passportCountry)
       setUser(u)
