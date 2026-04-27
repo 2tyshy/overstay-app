@@ -51,7 +51,7 @@ function localHourFor(tz: string): number {
     return parseInt(
       new Intl.DateTimeFormat('en', { hour: 'numeric', hour12: false, timeZone: tz }).format(new Date()),
       10
-    )
+    ) % 24
   } catch {
     // Unknown timezone string — fall back to UTC
     return new Date().getUTCHours()
