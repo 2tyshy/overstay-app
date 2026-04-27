@@ -101,7 +101,10 @@ export function useSchemes(passport: string, userId: string | undefined) {
    * Client writes scheme_votes — trigger recalculates.
    */
   const vote = useCallback(async (schemeId: string, voteType: 'works' | 'broken') => {
-    if (!isUuid(userId)) return  // dev fallback: no real user to attribute the vote to
+    if (!isUuid(userId)) {
+      console.warn('[vote] skipped — userId is not a UUID:', userId)
+      return
+    }
     const existing = votes[schemeId]
     const toggling = existing === voteType
     const finalVote: 'works' | 'broken' | null = toggling ? null : voteType
@@ -131,7 +134,10 @@ export function useSchemes(passport: string, userId: string | undefined) {
         if (delErr) throw delErr
       } else {
         const { error: upErr } = await supabase.from('scheme_votes')
-          .upsert({ user_id: userId, scheme_id: schemeId, vote: finalVote })
+          .upsert(
+            { user_id: userId, scheme_id: schemeId, vote: finalVote },
+            { onConflict: 'user_id,scheme_id' }
+          )
         if (upErr) throw upErr
       }
       // Trigger has updated the counter — pull the fresh value for this scheme

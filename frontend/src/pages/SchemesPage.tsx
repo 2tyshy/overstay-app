@@ -169,7 +169,7 @@ export default function SchemesPage({ passport, currentCountry }: Props) {
           scheme={scheme}
           index={i}
           userVote={votes[scheme.id] ?? null}
-          onVote={(id, v) => { vote(id, v).catch(() => { /* ignore — hook refetches */ }) }}
+          onVote={(id, v) => { vote(id, v).catch((e) => { console.error('[vote]', e) }) }}
           onEdit={handleEdit}
           onDelete={handleDelete}
           userId={userId}
