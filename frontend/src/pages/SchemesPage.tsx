@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react'
+import { isUuid } from '@/lib/uuid'
 import { Plus, RefreshCw, WifiOff } from 'lucide-react'
 import SchemeFilters from '@/components/SchemeFilters'
 import SchemeCard from '@/components/SchemeCard'
@@ -170,7 +171,7 @@ export default function SchemesPage({ passport, currentCountry }: Props) {
           index={i}
           userVote={votes[scheme.id] ?? null}
           onVote={(id, v) => {
-            if (!userId) { alert('userId не загружен, попробуй позже'); return }
+            if (!isUuid(userId)) { alert('Открой через Telegram — без него голос не сохранится (userId=' + userId + ')'); return }
             vote(id, v).catch((e) => {
               const msg = e?.message || e?.code || JSON.stringify(e) || 'unknown'
               alert('Vote error: ' + msg)
