@@ -4,14 +4,22 @@ import { startScheduler, createBotActions } from './scheduler'
 
 dotenv.config()
 
-const bot = new Telegraf(process.env.BOT_TOKEN!)
+const { BOT_TOKEN, FRONTEND_URL } = process.env
+if (!BOT_TOKEN) throw new Error('BOT_TOKEN is required')
+if (!FRONTEND_URL) throw new Error('FRONTEND_URL is required')
+
+const bot = new Telegraf(BOT_TOKEN)
+
+bot.catch((err, ctx) => {
+  console.error(`[bot] error in update ${ctx.updateType}:`, err)
+})
 
 bot.command('start', async (ctx) => {
-  const firstName = ctx.from.first_name
+  const firstName = ctx.from?.first_name ?? 'номад'
   await ctx.reply(
     `Привет, ${firstName}! 👋\n\nOverstay — трекер виз для номадов в ЮВА.\nОтслеживай дедлайны, находи схемы визаранов, спрашивай AI.\n\nКоманды:\n/check — проверить статус своих виз прямо сейчас`,
     Markup.inlineKeyboard([
-      Markup.button.webApp('Открыть Overstay', process.env.FRONTEND_URL!)
+      Markup.button.webApp('Открыть Overstay', FRONTEND_URL)
     ])
   )
 })
@@ -19,7 +27,7 @@ bot.command('start', async (ctx) => {
 bot.command('status', async (ctx) => {
   await ctx.reply('Открой приложение для деталей',
     Markup.inlineKeyboard([
-      Markup.button.webApp('Открыть', process.env.FRONTEND_URL!)
+      Markup.button.webApp('Открыть', FRONTEND_URL)
     ])
   )
 })
@@ -74,7 +82,10 @@ bot.action(/^register:(RU|UA|KZ)$/, async (ctx) => {
 
 startScheduler(bot)
 
-bot.launch()
+bot.launch().catch((err) => {
+  console.error('[bot] launch failed:', err)
+  process.exit(1)
+})
 console.log('Overstay bot started')
 
 process.once('SIGINT', () => bot.stop('SIGINT'))

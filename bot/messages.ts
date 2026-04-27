@@ -10,6 +10,10 @@
  * deadline, and only surfaces schemes if the deadline is actually near.
  */
 
+function escapeHtml(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+}
+
 export function formatReminderMessage(entry: any, daysLeft: number, schemes: any[]): string {
   const emoji = daysLeft <= 7 ? '🔴' : '🟡'
   const flag = getFlag(entry.country)
@@ -23,7 +27,7 @@ export function formatReminderMessage(entry: any, daysLeft: number, schemes: any
       const to = getFlag(s.to_country)
       const cost = s.cost_usd ? `~$${s.cost_usd}` : ''
       const time = s.duration_hours ? `~${s.duration_hours}ч` : ''
-      msg += `${i + 1}. ${flag}→${to} ${s.border_crossing ?? ''} ${cost} ${time}\n`
+      msg += `${i + 1}. ${flag}→${to} ${escapeHtml(s.border_crossing ?? '')} ${cost} ${time}\n`
       msg += `   ✅ ${s.works_count} подтверждений\n\n`
     })
   }
@@ -36,9 +40,9 @@ export function formatStatusMessage(entry: any, daysLeft: number, schemes: any[]
   // Green when the deadline is comfortably far, yellow within 14d, red within 7d.
   const emoji = daysLeft <= 7 ? '🔴' : daysLeft <= 14 ? '🟡' : '🟢'
 
-  let msg = `${emoji} <b>${flag} ${entry.country} · ${daysLeft} ${pluralDays(daysLeft)}</b> до дедлайна\n`
-  msg += `Въезд: <code>${entry.entry_date}</code> · Виза: <code>${entry.visa_type}</code>\n`
-  msg += `Выехать до: <b>${entry.deadline}</b>`
+  let msg = `${emoji} <b>${flag} ${escapeHtml(entry.country)} · ${daysLeft} ${pluralDays(daysLeft)}</b> до дедлайна\n`
+  msg += `Въезд: <code>${escapeHtml(entry.entry_date)}</code> · Виза: <code>${escapeHtml(entry.visa_type)}</code>\n`
+  msg += `Выехать до: <b>${escapeHtml(entry.deadline)}</b>`
 
   if (schemes.length > 0) {
     msg += `\n\n🗺 <b>Топ схемы:</b>\n`
@@ -46,7 +50,7 @@ export function formatStatusMessage(entry: any, daysLeft: number, schemes: any[]
       const to = getFlag(s.to_country)
       const cost = s.cost_usd ? `~$${s.cost_usd}` : ''
       const time = s.duration_hours ? `~${s.duration_hours}ч` : ''
-      msg += `${i + 1}. ${flag}→${to} ${s.border_crossing ?? ''} ${cost} ${time}\n`
+      msg += `${i + 1}. ${flag}→${to} ${escapeHtml(s.border_crossing ?? '')} ${cost} ${time}\n`
       msg += `   ✅ ${s.works_count} · ❌ ${s.broken_count}\n`
     })
   }
