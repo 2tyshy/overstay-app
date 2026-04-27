@@ -169,7 +169,13 @@ export default function SchemesPage({ passport, currentCountry }: Props) {
           scheme={scheme}
           index={i}
           userVote={votes[scheme.id] ?? null}
-          onVote={(id, v) => { vote(id, v).catch((e) => { console.error('[vote]', e) }) }}
+          onVote={(id, v) => {
+            if (!userId) { alert('userId не загружен, попробуй позже'); return }
+            vote(id, v).catch((e) => {
+              const msg = e?.message || e?.code || JSON.stringify(e) || 'unknown'
+              alert('Vote error: ' + msg)
+            })
+          }}
           onEdit={handleEdit}
           onDelete={handleDelete}
           userId={userId}
