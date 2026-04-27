@@ -189,9 +189,6 @@ export default function CameraSheet({ open, onClose, onApply, onNeedApiKey }: Pr
             <div className="text-[13px] font-medium" style={{ color: 'var(--text1)' }}>
               {progress?.message || 'Обрабатываю...'}
             </div>
-            <div className="font-mono text-[9px] mt-1 uppercase" style={{ color: 'var(--text4)', letterSpacing: '0.1em' }}>
-              Stage: {progress?.stage || '—'}
-            </div>
           </div>
         </div>
       )}
@@ -281,24 +278,16 @@ export default function CameraSheet({ open, onClose, onApply, onNeedApiKey }: Pr
             )}
           </div>
 
-          {!result.country && !result.entry_date && !result.visa_type && result.raw && (
-            <details
-              className="p-3 rounded-[10px] border"
+          {!result.country && !result.entry_date && !result.visa_type && (
+            <div
+              className="p-3 rounded-[10px] border flex gap-2.5 items-start"
               style={{ background: 'var(--alert-bg)', borderColor: 'var(--alert-border)' }}
             >
-              <summary className="font-mono text-[10px] cursor-pointer" style={{ color: 'var(--alert-text)' }}>
-                Gemini не распознал · показать ответ
-              </summary>
-              <pre
-                className="font-mono text-[9px] mt-2 overflow-auto max-h-40 whitespace-pre-wrap"
-                style={{ color: 'var(--text2)' }}
-              >
-                {result.raw}
-              </pre>
-              <div className="font-mono text-[9px] mt-2" style={{ color: 'var(--text3)' }}>
-                Заполни поля вручную выше или попробуй более чёткое фото: один штамп в кадре, без бликов, прямо сверху.
+              <AlertCircle size={13} strokeWidth={1.5} className="mt-0.5 shrink-0" style={{ color: 'var(--alert-text)' }} />
+              <div className="font-mono text-[10px] leading-relaxed" style={{ color: 'var(--alert-text)' }}>
+                Не удалось распознать штамп. Попробуй: один штамп в кадре, без бликов, фото сверху при хорошем освещении. Или заполни поля выше вручную.
               </div>
-            </details>
+            </div>
           )}
 
           <div className="grid grid-cols-2 gap-2 mt-4">
