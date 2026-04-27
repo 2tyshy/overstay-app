@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { getOrCreateUser, setTelegramContext } from '@/lib/supabase'
+import { getOrCreateUser, setTelegramContext, updateUserTimezone } from '@/lib/supabase'
 import { getTelegramId, getTelegramInitData } from '@/lib/telegram'
 import type { User, PassportCountry } from '@/types'
 
@@ -50,6 +50,12 @@ export function useUser(passportCountry: PassportCountry = 'RU') {
       const u = await getOrCreateUser(telegramId, passportCountry)
       setUser(u)
       setLoading(false)
+      // Persist user's IANA timezone so the bot can send reminders at local 10:00.
+      // Fire-and-forget: failure doesn't affect app UX.
+      if (u?.id) {
+        const tz = Intl.DateTimeFormat().resolvedOptions().timeZone
+        void updateUserTimezone(u.id, tz)
+      }
     }
     init()
     // intentionally only re-run when telegramId changes (never) — passport

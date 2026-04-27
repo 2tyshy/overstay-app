@@ -102,3 +102,14 @@ export async function deleteVisaEntry(userId: string | undefined, entryId: strin
   console.log('[supabase] deleted visa_entry', entryId)
   return { ok: true }
 }
+
+export async function updateUserTimezone(userId: string, timezone: string): Promise<void> {
+  if (!isUuid(userId)) return
+  const { error } = await supabase
+    .from('users')
+    .update({ timezone })
+    .eq('id', userId)
+  if (error) {
+    console.warn('[supabase] updateUserTimezone failed:', error.message)
+  }
+}
