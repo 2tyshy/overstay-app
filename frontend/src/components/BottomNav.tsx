@@ -1,10 +1,11 @@
-import { LayoutGrid, ArrowLeftRight, CircleArrowRight } from 'lucide-react'
+import { LayoutGrid, ArrowLeftRight, CircleArrowRight, HelpCircle } from 'lucide-react'
 import type { Screen } from '@/types'
 
 const tabs: Array<{ id: Screen; label: string; icon: typeof LayoutGrid }> = [
   { id: 'status', label: 'Статус', icon: LayoutGrid },
   { id: 'schemes', label: 'Схемы', icon: ArrowLeftRight },
   { id: 'next', label: 'Дальше', icon: CircleArrowRight },
+  { id: 'faq', label: 'FAQ', icon: HelpCircle },
 ]
 
 interface Props {

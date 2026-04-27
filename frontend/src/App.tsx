@@ -5,6 +5,7 @@ import BottomNav from '@/components/BottomNav'
 import StatusPage from '@/pages/StatusPage'
 import SchemesPage from '@/pages/SchemesPage'
 import NextPage from '@/pages/NextPage'
+import FAQPage from '@/pages/FAQPage'
 import AddEntrySheet from '@/components/AddEntrySheet'
 import EntryDetailSheet from '@/components/EntryDetailSheet'
 import ChatSheet from '@/components/ChatSheet'
@@ -21,6 +22,7 @@ const SCREEN_TITLES: Record<Screen, string> = {
   status: 'Overstay',
   schemes: 'Схемы',
   next: 'Дальше',
+  faq: 'FAQ',
 }
 
 // Seed uses realistic 2026 data. Entry visa_type strings are normalized
@@ -305,6 +307,7 @@ export default function App() {
           )}
           {screen === 'schemes' && <SchemesPage passport={passport} />}
           {screen === 'next' && <NextPage onNavigate={setScreen} entries={sorted} passport={passport} />}
+          {screen === 'faq' && <FAQPage />}
         </div>
 
         <BottomNav active={screen} onChange={setScreen} />

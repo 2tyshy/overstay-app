@@ -72,7 +72,7 @@ export function getRiskLevel(daysLeft: number, maxDays: number): RiskLevel {
   return 'danger'
 }
 
-export type Screen = 'status' | 'schemes' | 'next'
+export type Screen = 'status' | 'schemes' | 'next' | 'faq'
 
 export const COUNTRY_FLAGS: Record<string, string> = {
   VN: '🇻🇳', TH: '🇹🇭', KH: '🇰🇭', LA: '🇱🇦',
