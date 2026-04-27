@@ -1,0 +1,15 @@
+-- Migration 006: JWT Authentication (no RLS in this sprint)
+--
+-- Goals:
+--   1. Add JWT auth via Edge Function tg-auth for secure token generation
+--   2. Frontend calls tg-auth with Telegram initData, receives JWT
+--   3. Code-level checks verify author_id for write operations (updateScheme, deleteScheme)
+--
+-- Notes:
+--   - No RLS policies in this sprint (using Approach 2 — code-level auth)
+--   - Auth checks: useSchemes.ts uses .eq('author_id', userId) on all writes
+--   - JWT lifetime: 24 hours (86400 seconds), signed with APP_JWT_SECRET
+--   - On expiration: user gets new token by reopening Mini App
+--   - RLS + setSession() integration deferred to Sprint 4
+
+-- No schema changes required for this sprint
