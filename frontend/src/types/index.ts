@@ -53,15 +53,6 @@ export interface SchemeComment {
   created_at: string
 }
 
-export interface VisaRule {
-  passport: PassportCountry
-  country: string
-  visa_type: string
-  max_days: number
-  cost_of_living_usd?: number
-  cities?: string
-  notes?: string
-}
 
 export interface ChatMessage {
   id: string

@@ -191,7 +191,7 @@ export default function App() {
     const { deadline, maxDays } = effectiveDeadline(data.entry_date, ruleMaxDays, data.visa_end)
     const newEntry: VisaEntry = {
       id: editEntry?.id ?? genId(),
-      user_id: '1',
+      user_id: userId ?? 'dev',
       country: data.country.toUpperCase(),
       entry_date: data.entry_date,
       visa_type: data.visa_type,
@@ -215,8 +215,6 @@ export default function App() {
     void upsertVisaEntry(userId, newEntry).then(r => {
       if (!r.ok && r.reason !== 'no-user' && r.reason !== 'bad-id') {
         showToast('DB sync failed: ' + r.reason)
-      } else if (r.ok) {
-        showToast('☁ синк ок')
       }
     })
   }, [editEntry, passport, showToast, userId])
