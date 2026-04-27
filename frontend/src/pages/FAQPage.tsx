@@ -1,8 +1,6 @@
 import { useState } from 'react'
 import { ChevronDown, Loader2, HelpCircle } from 'lucide-react'
-
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string
+import { chat, type GeminiMessage } from '@/lib/gemini'
 
 const FAQ_SYSTEM = `Ты — ассистент приложения Overstay для digital nomads в ЮВА (Юго-Восточная Азия).
 Отвечай на русском, кратко и по делу (2-5 предложений).
@@ -20,22 +18,6 @@ const QUESTIONS: string[] = [
   'Нужна ли RU паспорту виза в Корею?',
 ]
 
-async function askProxy(question: string): Promise<string> {
-  const prompt = `${FAQ_SYSTEM}\n\nВопрос: ${question}`
-  const res = await fetch(`${SUPABASE_URL}/functions/v1/ai-proxy`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-    },
-    body: JSON.stringify({
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
-    }),
-  })
-  if (!res.ok) throw new Error(`ai-proxy ${res.status}`)
-  const data = await res.json()
-  return data?.candidates?.[0]?.content?.parts?.[0]?.text ?? 'Не удалось получить ответ.'
-}
 
 export default function FAQPage() {
   const [open, setOpen] = useState<number | null>(null)
@@ -50,7 +32,8 @@ export default function FAQPage() {
     setLoading(i)
     setErrors(prev => { const n = { ...prev }; delete n[i]; return n })
     try {
-      const text = await askProxy(QUESTIONS[i])
+      const msg: GeminiMessage = { role: 'user', parts: [{ text: QUESTIONS[i] }] }
+      const text = await chat([msg], FAQ_SYSTEM)
       setAnswers(prev => ({ ...prev, [i]: text }))
     } catch {
       setErrors(prev => ({ ...prev, [i]: 'Ошибка соединения. Проверь интернет и попробуй ещё раз.' }))
