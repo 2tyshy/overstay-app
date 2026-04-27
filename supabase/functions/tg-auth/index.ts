@@ -52,7 +52,7 @@ serve(async (req: Request) => {
     }
 
     // Get JWT secret from environment
-    const jwtSecret = Deno.env.get("SUPABASE_JWT_SECRET");
+    const jwtSecret = Deno.env.get("APP_JWT_SECRET");
     if (!jwtSecret) {
       return new Response(JSON.stringify({ error: "JWT_SECRET not configured" }), { status: 500 });
     }
