@@ -68,9 +68,13 @@ async function call(body: object): Promise<string> {
     })
   } else if (PROXY_URL) {
     // Default: route through server-side proxy (key stays in Edge Function)
+    const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY ?? ''
     res = await fetch(PROXY_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${anonKey}`,
+      },
       body: JSON.stringify(body),
     })
   } else {
