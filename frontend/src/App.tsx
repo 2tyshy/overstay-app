@@ -305,7 +305,7 @@ export default function App() {
               totalDaysSpent={sumDaysSpent(entries)}
             />
           )}
-          {screen === 'schemes' && <SchemesPage passport={passport} />}
+          {screen === 'schemes' && <SchemesPage passport={passport} currentCountry={sorted[0]?.country} />}
           {screen === 'next' && <NextPage onNavigate={setScreen} entries={sorted} passport={passport} />}
           {screen === 'faq' && <FAQPage />}
         </div>

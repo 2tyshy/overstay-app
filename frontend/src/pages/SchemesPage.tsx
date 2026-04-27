@@ -11,9 +11,10 @@ import { useCommentCounts } from '@/hooks/useSchemeComments'
 
 interface Props {
   passport: PassportCountry
+  currentCountry?: string
 }
 
-export default function SchemesPage({ passport }: Props) {
+export default function SchemesPage({ passport, currentCountry }: Props) {
   const { user } = useUser()
   const userId = user?.id
   const { schemes, votes, loading, error, vote, addScheme, updateScheme, deleteScheme, refetch } = useSchemes(passport, userId)
@@ -173,6 +174,7 @@ export default function SchemesPage({ passport }: Props) {
           onDelete={handleDelete}
           userId={userId}
           commentCount={commentCounts[scheme.id] ?? 0}
+          currentCountry={currentCountry}
         />
       ))}
 

@@ -12,9 +12,10 @@ interface Props {
   onDelete?: (schemeId: string) => void
   userId?: string
   commentCount?: number
+  currentCountry?: string
 }
 
-export default function SchemeCard({ scheme, index, userVote, onVote, onEdit, onDelete, userId, commentCount = 0 }: Props) {
+export default function SchemeCard({ scheme, index, userVote, onVote, onEdit, onDelete, userId, commentCount = 0, currentCountry }: Props) {
   const isAuthor = userId && scheme.author_id === userId
   const months = ['ЯНВ','ФЕВ','МАР','АПР','МАЙ','ИЮН','ИЮЛ','АВГ','СЕН','ОКТ','НОЯ','ДЕК']
   const d = new Date(scheme.verified_at)
@@ -37,6 +38,9 @@ export default function SchemeCard({ scheme, index, userVote, onVote, onEdit, on
           <span className="text-[17px]" style={{ letterSpacing: 2 }}>
             {COUNTRY_FLAGS[scheme.from_country]}{scheme.duration_hours && scheme.duration_hours > 48 ? '✈️' : '→'}{COUNTRY_FLAGS[scheme.to_country]}
           </span>
+          {currentCountry && scheme.from_country === currentCountry && (
+            <span className="text-[13px]" title="Актуально для твоей страны">🔥</span>
+          )}
           {scheme.border_crossing && (
             <span className="font-mono text-[10px] border rounded px-1.5 py-0.5" style={{ color: 'var(--text2)', borderColor: 'var(--border)' }}>
               {scheme.border_crossing}
