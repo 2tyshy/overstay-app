@@ -1,7 +1,7 @@
 import cron from 'node-cron'
 import { createClient, SupabaseClient } from '@supabase/supabase-js'
 import { Telegraf } from 'telegraf'
-import { formatReminderMessage, formatStatusMessage } from './messages'
+import { formatBatchReminderMessage, formatReminderMessage, formatStatusMessage } from './messages'
 
 /**
  * Notification service for Overstay. Two entry points:
@@ -75,6 +75,13 @@ export async function runDeadlineSweep(bot: Telegraf, supabase: SupabaseClient) 
 
   console.log(`[scheduler] found ${expiring?.length ?? 0} entries in 1..14d window`)
 
+  type UserBucket = {
+    tid: number
+    passport: string
+    items: Array<{ entry: any; daysLeft: number; schemes: any[] }>
+  }
+  const byUser = new Map<number, UserBucket>()
+
   for (const entry of expiring ?? []) {
     const tid: number | undefined = (entry as any).users?.telegram_id
     const passport: string | undefined = (entry as any).users?.passport_country
@@ -83,13 +90,20 @@ export async function runDeadlineSweep(bot: Telegraf, supabase: SupabaseClient) 
       console.warn('[scheduler] entry without user info, skipping', entry)
       continue
     }
-    // Only send when it's 10:xx in the user's local timezone.
     if (localHourFor(tz) !== 10) continue
+
+    if (!byUser.has(tid)) byUser.set(tid, { tid, passport, items: [] })
     const schemes = await topSchemesFor(supabase, passport, entry.country)
-    const msg = formatReminderMessage(entry, entry.days_left, schemes)
+    byUser.get(tid)!.items.push({ entry, daysLeft: entry.days_left, schemes })
+  }
+
+  console.log(`[scheduler] sending to ${byUser.size} users`)
+
+  for (const { tid, items } of byUser.values()) {
+    const msg = formatBatchReminderMessage(items)
     try {
       await bot.telegram.sendMessage(tid, msg, { parse_mode: 'HTML' })
-      console.log(`[scheduler] sent reminder to ${tid} (${entry.country}, ${entry.days_left}d, tz=${tz})`)
+      console.log(`[scheduler] sent batch (${items.length} entries) to ${tid}`)
     } catch (e) {
       console.error(`[scheduler] send to ${tid} failed:`, e)
     }

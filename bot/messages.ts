@@ -71,3 +71,11 @@ function getFlag(country: string): string {
   }
   return flags[country] ?? country
 }
+
+export function formatBatchReminderMessage(
+  entries: Array<{ entry: any; daysLeft: number; schemes: any[] }>
+): string {
+  return entries
+    .map(({ entry, daysLeft, schemes }) => formatReminderMessage(entry, daysLeft, schemes))
+    .join('\n———\n\n')
+}
