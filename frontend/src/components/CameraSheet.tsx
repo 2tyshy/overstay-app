@@ -2,7 +2,7 @@ import { useState, useRef, useCallback } from 'react'
 import { Camera, Image as ImageIcon, Loader2, AlertCircle, Check, X } from 'lucide-react'
 import BottomSheet from './BottomSheet'
 import { extractFromImage, type OcrResult, type OcrProgress } from '@/lib/ocr'
-import { getGeminiKey } from '@/lib/gemini'
+import { hasAiAccess } from '@/lib/gemini'
 import { COUNTRY_FLAGS, COUNTRY_NAMES } from '@/types'
 import { COUNTRY_CODES, COUNTRY_DATA } from '@/lib/visaRules'
 
@@ -39,7 +39,7 @@ export default function CameraSheet({ open, onClose, onApply, onNeedApiKey }: Pr
   }, [reset, onClose])
 
   const handleFile = useCallback(async (file: File) => {
-    if (!getGeminiKey()) {
+    if (!hasAiAccess()) {
       onNeedApiKey()
       return
     }

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { Send, Sparkles, Trash2, Key, Info, Loader2 } from 'lucide-react'
 import BottomSheet from './BottomSheet'
-import { chat as geminiChat, getGeminiKey, setUserGeminiKey, clearUserGeminiKey, type GeminiMessage } from '@/lib/gemini'
+import { chat as geminiChat, hasAiAccess, setUserGeminiKey, clearUserGeminiKey, type GeminiMessage } from '@/lib/gemini'
 import { COUNTRY_NAMES, type VisaEntry, type PassportCountry } from '@/types'
 import { formatDateFull } from '@/lib/dates'
 
@@ -83,7 +83,7 @@ export default function ChatSheet({ open, onClose, passport, entries }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
-  const hasKey = useMemo(() => getGeminiKey() !== null, [keyMode, open])
+  const hasKey = useMemo(() => hasAiAccess(), [keyMode, open])
 
   useEffect(() => { saveHistory(messages) }, [messages])
 
@@ -97,7 +97,7 @@ export default function ChatSheet({ open, onClose, passport, entries }: Props) {
   const send = useCallback(async (text: string) => {
     const trimmed = text.trim()
     if (!trimmed || sending) return
-    if (!getGeminiKey()) { setKeyMode(true); return }
+    if (!hasAiAccess()) { setKeyMode(true); return }
 
     setError('')
     const userMsg: ChatMsg = { id: genId(), role: 'user', content: trimmed, ts: Date.now() }

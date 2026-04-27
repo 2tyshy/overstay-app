@@ -1,25 +1,34 @@
 // Minimal Gemini REST client — no SDK, CORS-friendly, works in browser.
 // Used for both chat and vision OCR of passport stamps / visa stickers.
+//
+// Key routing:
+//   1. User-provided key in localStorage (power users, direct to Gemini)
+//   2. Supabase ai-proxy Edge Function (default; key stays server-side)
+// VITE_GEMINI_API_KEY is no longer used in production — key is in Edge Function secrets.
 
 const LS_USER_KEY = 'overstay_gemini_key'
 const MODEL = 'gemini-2.5-flash'
-const BASE = 'https://generativelanguage.googleapis.com/v1beta/models'
+const GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta/models'
+
+const PROXY_URL = import.meta.env.VITE_SUPABASE_URL
+  ? `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-proxy`
+  : null
 
 /**
- * Resolve API key with precedence:
- *   1. User-provided key in localStorage (lets power users bring their own)
- *   2. VITE_GEMINI_API_KEY from .env (baked in at build time for single-user deploy)
- *
- * Returns null if neither is set, so UI can prompt for one.
+ * Returns user-provided key from localStorage, or null.
+ * When null the proxy is used — no key required from the user.
  */
 export function getGeminiKey(): string | null {
   try {
     const userKey = localStorage.getItem(LS_USER_KEY)
     if (userKey && userKey.trim()) return userKey.trim()
   } catch { /* localStorage might be blocked */ }
-  const envKey = import.meta.env.VITE_GEMINI_API_KEY
-  if (envKey && typeof envKey === 'string' && envKey.trim()) return envKey.trim()
   return null
+}
+
+/** True when AI features are available (proxy configured or user key set). */
+export function hasAiAccess(): boolean {
+  return PROXY_URL !== null || getGeminiKey() !== null
 }
 
 export function setUserGeminiKey(key: string): void {
@@ -46,17 +55,28 @@ export interface GeminiError extends Error {
 }
 
 async function call(body: object): Promise<string> {
-  const key = getGeminiKey()
-  if (!key) {
+  const userKey = getGeminiKey()
+  let res: Response
+
+  if (userKey) {
+    // Power user: call Gemini directly with their own key
+    const url = `${GEMINI_BASE}/${MODEL}:generateContent?key=${encodeURIComponent(userKey)}`
+    res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+  } else if (PROXY_URL) {
+    // Default: route through server-side proxy (key stays in Edge Function)
+    res = await fetch(PROXY_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+  } else {
     const err: GeminiError = Object.assign(new Error('no-api-key'), { code: 'NO_KEY' })
     throw err
   }
-  const url = `${BASE}/${MODEL}:generateContent?key=${encodeURIComponent(key)}`
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  })
   if (!res.ok) {
     const txt = await res.text().catch(() => '')
     const err: GeminiError = Object.assign(
