@@ -45,13 +45,26 @@ async function topSchemesFor(supabase: SupabaseClient, passport: string, fromCou
   return data ?? []
 }
 
+/** Returns the local hour (0-23) for a given IANA timezone at the current moment. */
+function localHourFor(tz: string): number {
+  try {
+    return parseInt(
+      new Intl.DateTimeFormat('en', { hour: 'numeric', hour12: false, timeZone: tz }).format(new Date()),
+      10
+    )
+  } catch {
+    // Unknown timezone string — fall back to UTC
+    return new Date().getUTCHours()
+  }
+}
+
 /** Cron sweep: DMs every user whose days_left is in [1, 14]. */
 export async function runDeadlineSweep(bot: Telegraf, supabase: SupabaseClient) {
   console.log('[scheduler] deadline sweep starting at', new Date().toISOString())
 
   const { data: expiring, error } = await supabase
     .from('visa_entries_with_deadline')
-    .select('*, users(telegram_id, passport_country)')
+    .select('*, users(telegram_id, passport_country, timezone)')
     .gte('days_left', 1)
     .lte('days_left', 14)
 
@@ -65,15 +78,18 @@ export async function runDeadlineSweep(bot: Telegraf, supabase: SupabaseClient) 
   for (const entry of expiring ?? []) {
     const tid: number | undefined = (entry as any).users?.telegram_id
     const passport: string | undefined = (entry as any).users?.passport_country
+    const tz: string = (entry as any).users?.timezone ?? 'UTC'
     if (!tid || !passport) {
       console.warn('[scheduler] entry without user info, skipping', entry)
       continue
     }
+    // Only send when it's 10:xx in the user's local timezone.
+    if (localHourFor(tz) !== 10) continue
     const schemes = await topSchemesFor(supabase, passport, entry.country)
     const msg = formatReminderMessage(entry, entry.days_left, schemes)
     try {
       await bot.telegram.sendMessage(tid, msg, { parse_mode: 'HTML' })
-      console.log(`[scheduler] sent reminder to ${tid} (${entry.country}, ${entry.days_left}d)`)
+      console.log(`[scheduler] sent reminder to ${tid} (${entry.country}, ${entry.days_left}d, tz=${tz})`)
     } catch (e) {
       console.error(`[scheduler] send to ${tid} failed:`, e)
     }
@@ -163,9 +179,9 @@ export async function checkUserStatus(bot: Telegraf, supabase: SupabaseClient, t
 
 export function startScheduler(bot: Telegraf) {
   const supabase = getSupabase()
-  // 10:00 UTC daily. Railway runs on UTC. If we want to shift to a specific
-  // local time window for users, we'd need timezones per user — deferred.
-  cron.schedule('0 10 * * *', () => {
+  // Runs every hour. Inside runDeadlineSweep we filter by user's local hour = 10
+  // so each user gets their reminder at 10:00 in their own timezone.
+  cron.schedule('0 * * * *', () => {
     void runDeadlineSweep(bot, supabase)
   })
 }
