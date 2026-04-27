@@ -1,6 +1,7 @@
 import { type VisaEntry } from '@/types'
 import HeroCard from '@/components/HeroCard'
 import AlertStrip from '@/components/AlertStrip'
+import CountryCard from '@/components/CountryCard'
 import ActionGrid from '@/components/ActionGrid'
 import HistoryItem from '@/components/HistoryItem'
 import EmptyState from '@/components/EmptyState'
@@ -33,6 +34,7 @@ export default function StatusPage({
         <>
           <HeroCard entry={current} stats={stats} onClick={() => onEntryClick(current)} />
           <AlertStrip entry={current} />
+          <CountryCard countryCode={current.country} />
         </>
       ) : (
         <EmptyState onAdd={onStamp} />
