@@ -30,6 +30,23 @@ function getSupabase(): SupabaseClient {
   return createClient(url, key)
 }
 
+async function withRetry<T>(fn: () => PromiseLike<T>, retries = 3, baseDelayMs = 2000): Promise<T> {
+  let lastErr: unknown
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      return await Promise.resolve(fn())
+    } catch (e) {
+      lastErr = e
+      if (attempt < retries) {
+        const delay = baseDelayMs * Math.pow(2, attempt)
+        console.warn(`[retry] attempt ${attempt + 1} failed, retrying in ${delay}ms:`, e)
+        await new Promise(r => setTimeout(r, delay))
+      }
+    }
+  }
+  throw lastErr
+}
+
 async function topSchemesFor(supabase: SupabaseClient, passport: string, fromCountry: string) {
   const { data, error } = await supabase
     .from('schemes')
@@ -62,14 +79,25 @@ function localHourFor(tz: string): number {
 export async function runDeadlineSweep(bot: Telegraf, supabase: SupabaseClient) {
   console.log('[scheduler] deadline sweep starting at', new Date().toISOString())
 
-  const { data: expiring, error } = await supabase
-    .from('visa_entries_with_deadline')
-    .select('*, users(telegram_id, passport_country, timezone)')
-    .gte('days_left', 1)
-    .lte('days_left', 14)
+  let expiring: any[] | null = null
+  let queryError: any = null
+  try {
+    const result = await withRetry(() =>
+      supabase
+        .from('visa_entries_with_deadline')
+        .select('*, users(telegram_id, passport_country, timezone)')
+        .gte('days_left', 1)
+        .lte('days_left', 14)
+    )
+    expiring = result.data
+    queryError = result.error
+  } catch (retryErr) {
+    console.error('[scheduler] supabase query failed after retries:', retryErr)
+    return
+  }
 
-  if (error) {
-    console.error('[scheduler] supabase query failed:', error)
+  if (queryError) {
+    console.error('[scheduler] supabase query failed:', queryError)
     return
   }
 
@@ -121,11 +149,23 @@ export async function runDeadlineSweep(bot: Telegraf, supabase: SupabaseClient) 
  */
 export async function checkUserStatus(bot: Telegraf, supabase: SupabaseClient, telegramId: number) {
   console.log(`[check] start telegramId=${telegramId}`)
-  const { data: user, error: userErr } = await supabase
-    .from('users')
-    .select('id, passport_country')
-    .eq('telegram_id', telegramId)
-    .maybeSingle()
+  let user: any = null
+  let userErr: any = null
+  try {
+    const result = await withRetry(() =>
+      supabase
+        .from('users')
+        .select('id, passport_country')
+        .eq('telegram_id', telegramId)
+        .maybeSingle()
+    )
+    user = result.data
+    userErr = result.error
+  } catch (retryErr) {
+    console.error('[check] user lookup failed after retries:', retryErr)
+    await bot.telegram.sendMessage(telegramId, 'Упс, не смог прочитать базу. Напиши автору.')
+    return
+  }
 
   if (userErr) {
     console.error('[check] user lookup failed:', userErr)
@@ -155,15 +195,27 @@ export async function checkUserStatus(bot: Telegraf, supabase: SupabaseClient, t
     return
   }
 
-  const { data: entries, error } = await supabase
-    .from('visa_entries_with_deadline')
-    .select('*')
-    .eq('user_id', user.id)
-    .gte('days_left', 0)
-    .order('days_left', { ascending: true })
+  let entries: any[] | null = null
+  let entriesError: any = null
+  try {
+    const result = await withRetry(() =>
+      supabase
+        .from('visa_entries_with_deadline')
+        .select('*')
+        .eq('user_id', user.id)
+        .gte('days_left', 0)
+        .order('days_left', { ascending: true })
+    )
+    entries = result.data
+    entriesError = result.error
+  } catch (retryErr) {
+    console.error('[check] entries query failed after retries:', retryErr)
+    await bot.telegram.sendMessage(telegramId, 'Упс, не смог прочитать базу. Напиши автору.')
+    return
+  }
 
-  if (error) {
-    console.error('[check] entries query failed:', error)
+  if (entriesError) {
+    console.error('[check] entries query failed:', entriesError)
     await bot.telegram.sendMessage(telegramId, 'Упс, не смог прочитать базу. Напиши автору.')
     return
   }
