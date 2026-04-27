@@ -179,5 +179,38 @@ export function useSchemes(passport: string, userId: string | undefined) {
     return (data as Scheme) ?? null
   }, [userId])
 
-  return { schemes, votes, loading, error, vote, addScheme, refetch: fetchAll }
+  const updateScheme = useCallback(async (id: string, input: NewSchemeInput): Promise<void> => {
+    if (!isUuid(userId)) return
+    const { error: updateErr } = await supabase
+      .from('schemes')
+      .update({
+        from_country: input.from_country,
+        to_country: input.to_country,
+        border_crossing: input.border_crossing || null,
+        cost_usd: input.cost_usd ?? null,
+        duration_hours: input.duration_hours ?? null,
+        description: input.description,
+        tip: input.tip || null,
+      })
+      .eq('id', id)
+      .eq('author_id', userId)
+    if (updateErr) throw updateErr
+    setSchemes(prev => prev.map(s => s.id === id
+      ? { ...s, ...input, border_crossing: input.border_crossing || null, tip: input.tip || null } as import('@/types').Scheme
+      : s
+    ))
+  }, [userId])
+
+  const deleteScheme = useCallback(async (id: string): Promise<void> => {
+    if (!isUuid(userId)) return
+    const { error: delErr } = await supabase
+      .from('schemes')
+      .delete()
+      .eq('id', id)
+      .eq('author_id', userId)
+    if (delErr) throw delErr
+    setSchemes(prev => prev.filter(s => s.id !== id))
+  }, [userId])
+
+  return { schemes, votes, loading, error, vote, addScheme, updateScheme, deleteScheme, refetch: fetchAll }
 }

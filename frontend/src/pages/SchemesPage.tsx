@@ -16,12 +16,13 @@ interface Props {
 export default function SchemesPage({ passport }: Props) {
   const { user } = useUser()
   const userId = user?.id
-  const { schemes, votes, loading, error, vote, addScheme, refetch } = useSchemes(passport, userId)
+  const { schemes, votes, loading, error, vote, addScheme, updateScheme, deleteScheme, refetch } = useSchemes(passport, userId)
 
   const [filter, setFilter] = useState('Все')
   const [addSheetOpen, setAddSheetOpen] = useState(false)
+  const [editScheme, setEditScheme] = useState<import('@/types').Scheme | null>(null)
 
-  // Add Scheme form state
+  // Add/Edit Scheme form state
   const [fromCountry, setFromCountry] = useState('')
   const [toCountry, setToCountry] = useState('')
   const [borderCrossing, setBorderCrossing] = useState('')
@@ -47,7 +48,7 @@ export default function SchemesPage({ passport }: Props) {
   const resetForm = () => {
     setFromCountry(''); setToCountry(''); setBorderCrossing('')
     setCostUsd(''); setDurationHours(''); setDescription(''); setTip('')
-    setFormError(''); setSubmitting(false)
+    setFormError(''); setSubmitting(false); setEditScheme(null)
   }
 
   const handleAddScheme = async () => {
@@ -65,23 +66,49 @@ export default function SchemesPage({ passport }: Props) {
     }
     setSubmitting(true)
     setFormError('')
+    const input = {
+      passport,
+      from_country: fromCountry,
+      to_country: toCountry,
+      border_crossing: borderCrossing.trim() || undefined,
+      cost_usd: costUsd ? parseInt(costUsd, 10) : undefined,
+      duration_hours: durationHours ? parseInt(durationHours, 10) : undefined,
+      description: description.trim(),
+      tip: tip.trim() || undefined,
+    }
     try {
-      await addScheme({
-        passport,
-        from_country: fromCountry,
-        to_country: toCountry,
-        border_crossing: borderCrossing.trim() || undefined,
-        cost_usd: costUsd ? parseInt(costUsd, 10) : undefined,
-        duration_hours: durationHours ? parseInt(durationHours, 10) : undefined,
-        description: description.trim(),
-        tip: tip.trim() || undefined,
-      })
+      if (editScheme) {
+        await updateScheme(editScheme.id, input)
+      } else {
+        await addScheme(input)
+      }
       setAddSheetOpen(false)
       resetForm()
     } catch (e) {
       setFormError(e instanceof Error ? e.message : 'Не удалось сохранить')
     } finally {
       setSubmitting(false)
+    }
+  }
+
+  const handleEdit = (scheme: import('@/types').Scheme) => {
+    setEditScheme(scheme)
+    setFromCountry(scheme.from_country)
+    setToCountry(scheme.to_country)
+    setBorderCrossing(scheme.border_crossing ?? '')
+    setCostUsd(scheme.cost_usd != null ? String(scheme.cost_usd) : '')
+    setDurationHours(scheme.duration_hours != null ? String(scheme.duration_hours) : '')
+    setDescription(scheme.description)
+    setTip(scheme.tip ?? '')
+    setFormError('')
+    setAddSheetOpen(true)
+  }
+
+  const handleDelete = async (schemeId: string) => {
+    try {
+      await deleteScheme(schemeId)
+    } catch (e) {
+      console.error('[delete scheme]', e)
     }
   }
 
@@ -142,6 +169,8 @@ export default function SchemesPage({ passport }: Props) {
           index={i}
           userVote={votes[scheme.id] ?? null}
           onVote={(id, v) => { vote(id, v).catch(() => { /* ignore — hook refetches */ }) }}
+          onEdit={handleEdit}
+          onDelete={handleDelete}
           userId={userId}
           commentCount={commentCounts[scheme.id] ?? 0}
         />
@@ -166,7 +195,7 @@ export default function SchemesPage({ passport }: Props) {
 
       <BottomSheet open={addSheetOpen} onClose={() => { setAddSheetOpen(false); resetForm() }}>
         <h2 className="text-[17px] font-semibold mb-5" style={{ color: 'var(--text1)' }}>
-          Новая схема
+          {editScheme ? 'Редактировать схему' : 'Новая схема'}
         </h2>
 
         <div className="grid grid-cols-2 gap-2 mb-2">

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { MessageSquare } from 'lucide-react'
+import { MessageSquare, Pencil, Trash2 } from 'lucide-react'
 import { COUNTRY_FLAGS, type Scheme } from '@/types'
 import SchemeCommentsThread from './SchemeCommentsThread'
 
@@ -8,11 +8,14 @@ interface Props {
   index: number
   userVote?: 'works' | 'broken' | null
   onVote: (schemeId: string, vote: 'works' | 'broken') => void
+  onEdit?: (scheme: Scheme) => void
+  onDelete?: (schemeId: string) => void
   userId?: string
   commentCount?: number
 }
 
-export default function SchemeCard({ scheme, index, userVote, onVote, userId, commentCount = 0 }: Props) {
+export default function SchemeCard({ scheme, index, userVote, onVote, onEdit, onDelete, userId, commentCount = 0 }: Props) {
+  const isAuthor = userId && scheme.author_id === userId
   const months = ['ЯНВ','ФЕВ','МАР','АПР','МАЙ','ИЮН','ИЮЛ','АВГ','СЕН','ОКТ','НОЯ','ДЕК']
   const d = new Date(scheme.verified_at)
   const dateTag = `${months[d.getMonth()]} ${d.getFullYear()}`
@@ -74,6 +77,24 @@ export default function SchemeCard({ scheme, index, userVote, onVote, userId, co
             active={commentsOpen}
             onClick={() => setCommentsOpen(o => !o)}
           />
+          {isAuthor && (
+            <div className="flex gap-1 ml-auto">
+              <button
+                onClick={() => onEdit?.(scheme)}
+                className="flex items-center justify-center w-7 h-7 rounded border transition-colors"
+                style={{ borderColor: 'var(--border)', color: 'var(--text3)' }}
+              >
+                <Pencil size={11} strokeWidth={1.5} />
+              </button>
+              <button
+                onClick={() => { if (window.confirm('Удалить схему?')) onDelete?.(scheme.id) }}
+                className="flex items-center justify-center w-7 h-7 rounded border transition-colors"
+                style={{ borderColor: 'var(--border)', color: 'var(--danger-text)' }}
+              >
+                <Trash2 size={11} strokeWidth={1.5} />
+              </button>
+            </div>
+          )}
         </div>
 
         {commentsOpen && (
