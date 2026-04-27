@@ -147,10 +147,17 @@ export default function App() {
     if (!userId) return
     let cancelled = false
     ;(async () => {
+      let ok = 0
+      let lastErr = ''
       for (const e of entries) {
         if (cancelled) return
-        await upsertVisaEntry(userId, e)
+        const r = await upsertVisaEntry(userId, e)
+        if (r.ok) ok++
+        else if (r.reason !== 'no-user' && r.reason !== 'bad-id') lastErr = r.reason
       }
+      if (cancelled) return
+      if (lastErr) showToast(`☁ синк: ${ok}/${entries.length}, err: ${lastErr}`)
+      else if (ok > 0) showToast(`☁ синк: ${ok} виз → БД`)
     })()
     return () => { cancelled = true }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -164,7 +171,11 @@ export default function App() {
   const handleDelete = useCallback((id: string) => {
     setEntries(prev => prev.filter(e => e.id !== id))
     // Fire-and-forget mirror to Supabase. UI stays instant; server catches up.
-    void deleteVisaEntry(userId, id)
+    void deleteVisaEntry(userId, id).then(r => {
+      if (!r.ok && r.reason !== 'no-user' && r.reason !== 'bad-id') {
+        showToast('DB delete failed: ' + r.reason)
+      }
+    })
     showToast('Запись удалена')
   }, [showToast, userId])
 
@@ -201,7 +212,13 @@ export default function App() {
     }
     // Mirror to Supabase so the bot (and /check, and the daily cron) sees it.
     // Fire-and-forget: UI is already updated, network latency shouldn't block.
-    void upsertVisaEntry(userId, newEntry)
+    void upsertVisaEntry(userId, newEntry).then(r => {
+      if (!r.ok && r.reason !== 'no-user' && r.reason !== 'bad-id') {
+        showToast('DB sync failed: ' + r.reason)
+      } else if (r.ok) {
+        showToast('☁ синк ок')
+      }
+    })
   }, [editEntry, passport, showToast, userId])
 
   // Copy a text snapshot of all entries to clipboard. We avoid the blob+download

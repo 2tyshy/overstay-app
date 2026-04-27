@@ -48,11 +48,23 @@ export async function getOrCreateUser(telegramId: number, passportCountry: strin
  * Silent no-op when `userId` is the dev sentinel (running outside
  * Telegram) — we have no real user row to key off.
  */
-export async function upsertVisaEntry(userId: string | undefined, entry: VisaEntry): Promise<void> {
-  if (!isUuid(userId)) return
+export type SyncResult = { ok: true } | { ok: false; reason: string }
+
+function describeError(e: unknown): string {
+  if (!e) return 'unknown'
+  if (e instanceof Error) return e.message
+  if (typeof e === 'object') {
+    const err = e as { message?: string; details?: string; hint?: string; code?: string }
+    return err.message || err.details || err.hint || err.code || JSON.stringify(e)
+  }
+  return String(e)
+}
+
+export async function upsertVisaEntry(userId: string | undefined, entry: VisaEntry): Promise<SyncResult> {
+  if (!isUuid(userId)) return { ok: false, reason: 'no-user' }
   if (!isUuid(entry.id)) {
     console.warn('[supabase] skipping sync — entry id is not a UUID:', entry.id)
-    return
+    return { ok: false, reason: 'bad-id' }
   }
   const { error } = await supabase
     .from('visa_entries')
@@ -69,14 +81,15 @@ export async function upsertVisaEntry(userId: string | undefined, entry: VisaEnt
     }, { onConflict: 'id' })
   if (error) {
     console.error('[supabase] upsert visa_entry failed:', error)
-  } else {
-    console.log('[supabase] upserted visa_entry', entry.id)
+    return { ok: false, reason: describeError(error) }
   }
+  console.log('[supabase] upserted visa_entry', entry.id)
+  return { ok: true }
 }
 
-export async function deleteVisaEntry(userId: string | undefined, entryId: string): Promise<void> {
-  if (!isUuid(userId)) return
-  if (!isUuid(entryId)) return  // never made it to Supabase, nothing to delete
+export async function deleteVisaEntry(userId: string | undefined, entryId: string): Promise<SyncResult> {
+  if (!isUuid(userId)) return { ok: false, reason: 'no-user' }
+  if (!isUuid(entryId)) return { ok: false, reason: 'bad-id' }
   const { error } = await supabase
     .from('visa_entries')
     .delete()
@@ -84,7 +97,8 @@ export async function deleteVisaEntry(userId: string | undefined, entryId: strin
     .eq('user_id', userId)
   if (error) {
     console.error('[supabase] delete visa_entry failed:', error)
-  } else {
-    console.log('[supabase] deleted visa_entry', entryId)
+    return { ok: false, reason: describeError(error) }
   }
+  console.log('[supabase] deleted visa_entry', entryId)
+  return { ok: true }
 }

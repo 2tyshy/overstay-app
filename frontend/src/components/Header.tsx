@@ -28,12 +28,22 @@ export default function Header({ title, passport, onPassportChange, onChatOpen, 
 
   return (
     <div className="flex items-center justify-between px-[22px] pt-3.5 pb-0 shrink-0">
-      <span
-        className="font-light text-[11px] uppercase"
-        style={{ letterSpacing: '0.35em', color: 'var(--text3)' }}
-      >
-        {title}
-      </span>
+      <div className="flex flex-col">
+        <span
+          className="font-light text-[11px] uppercase"
+          style={{ letterSpacing: '0.35em', color: 'var(--text3)' }}
+        >
+          {title}
+        </span>
+        {/* Tiny build marker so we can confirm at a glance that Vercel
+            actually shipped the latest commit. Remove once we wire CI. */}
+        <span
+          className="font-mono text-[8px] mt-0.5 leading-none"
+          style={{ color: 'var(--text3)', opacity: 0.5 }}
+        >
+          {__BUILD_TAG__}
+        </span>
+      </div>
       <div className="flex items-center gap-2">
         <button
           onClick={onRefresh}

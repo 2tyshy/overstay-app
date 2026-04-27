@@ -7,6 +7,24 @@
 </head>
 <body>
   <div id="root"></div>
+  <!--
+    Eruda: lightweight in-page DevTools overlay for mobile WebViews
+    (Telegram Mini App in particular). Opt-in via `?debug=1` in the URL
+    so prod users don't see it. Loaded synchronously before main.tsx so
+    its console.log capture catches early boot logs.
+  -->
+  <script>
+    (function () {
+      try {
+        var qs = new URLSearchParams(window.location.search);
+        if (qs.get('debug') !== '1') return;
+        var s = document.createElement('script');
+        s.src = 'https://cdn.jsdelivr.net/npm/eruda';
+        s.onload = function () { try { window.eruda && window.eruda.init(); } catch (e) {} };
+        document.head.appendChild(s);
+      } catch (e) {}
+    })();
+  </script>
   <script type="module" src="/src/main.tsx"></script>
 </body>
 </html>
