@@ -1,4 +1,4 @@
-import { Plus, Stamp } from 'lucide-react'
+import { Stamp } from 'lucide-react'
 
 interface Props {
   onAdd: () => void
@@ -7,31 +7,26 @@ interface Props {
 export default function EmptyState({ onAdd }: Props) {
   return (
     <div
-      className="my-4 border rounded-[14px] px-5 py-10 text-center"
-      style={{
-        background: 'var(--bg2)',
-        borderColor: 'var(--border)',
-        animation: 'cardIn 0.5s cubic-bezier(0.16,1,0.3,1) both',
-      }}
+      className="flex flex-col items-center justify-center py-16 px-6 text-center"
+      style={{ animation: 'cardIn 0.5s cubic-bezier(0.16,1,0.3,1) both' }}
     >
       <div
-        className="mx-auto w-12 h-12 border rounded-full flex items-center justify-center mb-3"
-        style={{ borderColor: 'var(--border)', color: 'var(--text3)' }}
+        className="w-20 h-20 rounded-2xl flex items-center justify-center mb-6"
+        style={{ background: 'var(--bg2)' }}
       >
-        <Stamp size={20} strokeWidth={1.5} />
+        <Stamp size={36} strokeWidth={1.5} style={{ color: 'var(--text3)' }} />
       </div>
-      <div className="text-[15px] font-semibold mb-1" style={{ color: 'var(--text1)' }}>
-        Ещё нет ни одного въезда
+      <div className="text-[18px] font-semibold mb-2" style={{ color: 'var(--text1)' }}>
+        Куда летишь дальше?
       </div>
-      <div className="font-mono text-[10px] mb-5 leading-[1.6] px-4" style={{ color: 'var(--text3)' }}>
-        Добавь штамп, чтобы начать трекинг визовых дедлайнов
+      <div className="font-mono text-[11px] mb-8" style={{ color: 'var(--text3)' }}>
+        Сфотографируй штамп — AI заполнит визу сам
       </div>
       <button
         onClick={onAdd}
-        className="inline-flex items-center gap-2 px-4 py-2.5 rounded border font-semibold text-[12px] transition-all duration-150 active:scale-[0.97]"
-        style={{ background: 'var(--text1)', color: 'var(--bg)', borderColor: 'var(--text1)' }}
+        className="px-6 py-3 rounded-xl font-semibold text-sm transition-all active:scale-[0.98]"
+        style={{ background: 'var(--text1)', color: 'var(--bg)' }}
       >
-        <Plus size={14} strokeWidth={2} />
         Добавить первый въезд
       </button>
     </div>

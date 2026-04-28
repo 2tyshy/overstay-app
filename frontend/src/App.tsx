@@ -129,7 +129,7 @@ export default function App() {
   const [passport, setPassport] = useState<PassportCountry>(loadPassport)
   const [detailEntry, setDetailEntry] = useState<VisaEntry | null>(null)
   const [editEntry, setEditEntry] = useState<VisaEntry | null>(null)
-  const [toast, setToast] = useState<string | null>(null)
+  const [toast, setToast] = useState<{ message: string; type?: 'success' | 'error' | 'info' } | null>(null)
   const [ocrPrefill, setOcrPrefill] = useState<OcrResult | null>(null)
 
   // Resolve/insert the Supabase user row so we have a real UUID to key
@@ -169,8 +169,8 @@ export default function App() {
     }))
   }, [passport])
 
-  const showToast = useCallback((msg: string) => {
-    setToast(msg)
+  const showToast = useCallback((msg: string, type: 'success' | 'error' | 'info' = 'info') => {
+    setToast({ message: msg, type })
     window.setTimeout(() => setToast(null), 2200)
   }, [])
 
@@ -287,50 +287,6 @@ export default function App() {
     })
   }, [editEntry, passport, showToast, userId])
 
-  // Copy a text snapshot of all entries to clipboard. We avoid the blob+download
-  // approach because Telegram iOS WebView hijacks the navigation and leaves the
-  // user stuck in a text viewer with no way back to the app.
-  const handlePdfExport = useCallback(async () => {
-    const current = sorted[0]
-    const lines = [
-      'OVERSTAY — Visa Status Export',
-      `Passport: ${passport}`,
-      `Date: ${new Date().toISOString().split('T')[0]}`,
-      '',
-      '--- Current ---',
-      current
-        ? `${current.country} | ${current.visa_type} | Entry: ${current.entry_date} | Deadline: ${current.deadline} | Days left: ${current.days_left}`
-        : 'No active entry',
-      '',
-      '--- History ---',
-      ...sorted.slice(1).map(e =>
-        `${e.country} | ${e.visa_type} | Entry: ${e.entry_date} | Deadline: ${e.deadline}`
-      ),
-    ]
-    const text = lines.join('\n')
-    try {
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        await navigator.clipboard.writeText(text)
-        showToast('Скопировано в буфер обмена')
-        return
-      }
-    } catch { /* fall through to legacy path */ }
-    // Legacy fallback for older WebViews without Clipboard API
-    try {
-      const ta = document.createElement('textarea')
-      ta.value = text
-      ta.style.position = 'fixed'
-      ta.style.opacity = '0'
-      document.body.appendChild(ta)
-      ta.select()
-      document.execCommand('copy')
-      document.body.removeChild(ta)
-      showToast('Скопировано в буфер обмена')
-    } catch {
-      showToast('Не удалось скопировать')
-    }
-  }, [sorted, passport, showToast])
-
   const handleRefresh = useCallback(() => {
     setEntries(prev => prev.map(e => ({ ...e, days_left: calcDaysLeft(e.deadline) })))
     showToast('Обновлено')
@@ -363,9 +319,7 @@ export default function App() {
           {screen === 'status' && (
             <StatusPage
               entries={sorted}
-              onNavigate={setScreen}
               onStamp={() => setEntrySheetOpen(true)}
-              onPdf={handlePdfExport}
               onEntryClick={setDetailEntry}
               totalDaysSpent={sumDaysSpent(entries)}
             />
@@ -404,7 +358,7 @@ export default function App() {
           onNeedApiKey={() => { setCameraOpen(false); setScreen('chat'); showToast('Добавь API ключ Gemini') }}
         />
 
-        {toast && <Toast message={toast} />}
+        {toast && <Toast message={toast.message} type={toast.type} />}
       </div>
     </ThemeProvider>
   )

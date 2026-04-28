@@ -1,38 +1,35 @@
-import { HelpCircle, Camera, FileText } from 'lucide-react'
+import { Camera, ChevronRight } from 'lucide-react'
 
 interface Props {
-  onFaq: () => void
-  onStamp: () => void
-  onPdf: () => void
+  onCamera: () => void
 }
 
-export default function ActionGrid({ onFaq, onStamp, onPdf }: Props) {
-  const actions = [
-    { icon: HelpCircle, label: 'FAQ', sub: 'Горящие вопросы', onClick: onFaq, primary: true },
-    { icon: Camera, label: 'Штамп', sub: 'фото → AI', onClick: onStamp, primary: false },
-    { icon: FileText, label: 'PDF', sub: 'экспорт', onClick: onPdf, primary: false },
-  ]
-
+export default function ActionGrid({ onCamera }: Props) {
   return (
-    <div className="grid grid-cols-3 gap-2 mb-3" style={{ animation: 'cardIn 0.5s cubic-bezier(0.16,1,0.3,1) 0.25s both' }}>
-      {actions.map(a => {
-        const Icon = a.icon
-        return (
-          <button
-            key={a.label}
-            onClick={a.onClick}
-            className="border rounded-[10px] p-3 text-left transition-all duration-150 hover:-translate-y-px active:scale-[0.97]"
-            style={{
-              background: 'var(--bg2)',
-              borderColor: 'var(--border)',
-            }}
-          >
-            <Icon size={16} strokeWidth={1.5} className="mb-1.5" style={{ color: 'var(--text3)' }} />
-            <span className="text-[10px] font-semibold block" style={{ color: 'var(--text1)' }}>{a.label}</span>
-            <span className="font-mono text-[8px] block mt-px" style={{ color: 'var(--text3)' }}>{a.sub}</span>
-          </button>
-        )
-      })}
-    </div>
+    <button
+      onClick={onCamera}
+      className="w-full flex items-center gap-4 border rounded-[14px] p-4 mb-3 active:scale-[0.98] transition-transform"
+      style={{
+        borderColor: 'var(--border)',
+        background: 'var(--bg2)',
+        animation: 'cardIn 0.5s cubic-bezier(0.16,1,0.3,1) 0.25s both',
+      }}
+    >
+      <div
+        className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0"
+        style={{ background: 'var(--bg3)' }}
+      >
+        <Camera size={22} strokeWidth={1.5} style={{ color: 'var(--text1)' }} />
+      </div>
+      <div className="text-left">
+        <div className="text-[14px] font-semibold" style={{ color: 'var(--text1)' }}>
+          Сфотографируй штамп
+        </div>
+        <div className="font-mono text-[10px] mt-0.5" style={{ color: 'var(--text3)' }}>
+          AI заполнит визу автоматически
+        </div>
+      </div>
+      <ChevronRight size={16} className="ml-auto shrink-0" style={{ color: 'var(--text4)' }} />
+    </button>
   )
 }
