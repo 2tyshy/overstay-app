@@ -94,7 +94,6 @@ export async function deleteVisaEntry(userId: string | undefined, entryId: strin
     .from('visa_entries')
     .delete()
     .eq('id', entryId)
-    .eq('user_id', userId)
   if (error) {
     console.error('[supabase] delete visa_entry failed:', error)
     return { ok: false, reason: describeError(error) }
