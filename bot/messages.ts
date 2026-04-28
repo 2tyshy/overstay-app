@@ -79,3 +79,34 @@ export function formatBatchReminderMessage(
     .map(({ entry, daysLeft, schemes }) => formatReminderMessage(entry, daysLeft, schemes))
     .join('\n———\n\n')
 }
+
+export function formatThresholdReminder(
+  entry: any,
+  daysLeft: number,
+  threshold: 7 | 3 | 1,
+  schemes: any[]
+): string {
+  const flag = getFlag(entry.country)
+
+  let text: string
+  if (threshold === 7) {
+    text = `⏳ <b>Виза в ${flag} истекает через 7 дней</b> (${escapeHtml(entry.deadline)})\nСамое время спланировать визаран.`
+  } else if (threshold === 3) {
+    text = `⚠️ <b>Виза в ${flag} истекает через 3 дня</b> (${escapeHtml(entry.deadline)})\nСрочно планируй выезд.`
+  } else {
+    text = `🚨 <b>Виза в ${flag} истекает завтра!</b> (${escapeHtml(entry.deadline)})\nУбедись что план есть — штрафы при овер-стее серьёзные.`
+  }
+
+  if (schemes.length > 0) {
+    text += `\n\n🗺 <b>Топ схемы для визарана:</b>\n`
+    schemes.forEach((s: any, i: number) => {
+      const to = getFlag(s.to_country)
+      const cost = s.cost_usd ? ` ~$${s.cost_usd}` : ''
+      const time = s.duration_hours ? ` ~${s.duration_hours}ч` : ''
+      const crossing = s.border_crossing ? ` ${escapeHtml(s.border_crossing)}` : ''
+      text += `${i + 1}. ${flag}→${to}${crossing}${cost}${time} · ✅ ${s.works_count}\n`
+    })
+  }
+
+  return text
+}

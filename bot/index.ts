@@ -80,7 +80,7 @@ bot.action(/^register:(RU|UA|KZ)$/, async (ctx) => {
   }
 })
 
-startScheduler(bot)
+startScheduler(bot, FRONTEND_URL)
 
 bot.launch().catch((err) => {
   console.error('[bot] launch failed:', err)

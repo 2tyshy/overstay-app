@@ -1,7 +1,7 @@
 import cron from 'node-cron'
 import { createClient, SupabaseClient } from '@supabase/supabase-js'
 import { Telegraf } from 'telegraf'
-import { formatBatchReminderMessage, formatReminderMessage, formatStatusMessage } from './messages'
+import { formatBatchReminderMessage, formatReminderMessage, formatStatusMessage, formatThresholdReminder } from './messages'
 
 /**
  * Notification service for Overstay. Two entry points:
@@ -75,8 +75,12 @@ function localHourFor(tz: string): number {
   }
 }
 
-/** Cron sweep: DMs every user whose days_left is in [1, 14]. */
-export async function runDeadlineSweep(bot: Telegraf, supabase: SupabaseClient) {
+/**
+ * Cron sweep: sends threshold reminders at days_left = 7, 3, 1.
+ * Each (user, visa_entry, threshold) is sent at most once — tracked in notification_log.
+ * Fires only when user's local hour = 10.
+ */
+export async function runDeadlineSweep(bot: Telegraf, supabase: SupabaseClient, frontendUrl: string) {
   console.log('[scheduler] deadline sweep starting at', new Date().toISOString())
 
   let expiring: any[] | null = null
@@ -85,9 +89,9 @@ export async function runDeadlineSweep(bot: Telegraf, supabase: SupabaseClient) 
     const result = await withRetry(() =>
       supabase
         .from('visa_entries_with_deadline')
-        .select('*, users(telegram_id, passport_country, timezone)')
+        .select('*, users(id, telegram_id, passport_country, timezone)')
         .gte('days_left', 1)
-        .lte('days_left', 14)
+        .lte('days_left', 7)
     )
     expiring = result.data
     queryError = result.error
@@ -101,37 +105,55 @@ export async function runDeadlineSweep(bot: Telegraf, supabase: SupabaseClient) 
     return
   }
 
-  console.log(`[scheduler] found ${expiring?.length ?? 0} entries in 1..14d window`)
-
-  type UserBucket = {
-    tid: number
-    passport: string
-    items: Array<{ entry: any; daysLeft: number; schemes: any[] }>
-  }
-  const byUser = new Map<number, UserBucket>()
+  console.log(`[scheduler] found ${expiring?.length ?? 0} entries in 1..7d window`)
 
   for (const entry of expiring ?? []) {
+    const userId: string | undefined = (entry as any).users?.id
     const tid: number | undefined = (entry as any).users?.telegram_id
     const passport: string | undefined = (entry as any).users?.passport_country
     const tz: string = (entry as any).users?.timezone ?? 'UTC'
-    if (!tid || !passport) {
-      console.warn('[scheduler] entry without user info, skipping', entry)
+
+    if (!userId || !tid || !passport) {
+      console.warn('[scheduler] entry without user info, skipping')
       continue
     }
     if (localHourFor(tz) !== 10) continue
 
-    if (!byUser.has(tid)) byUser.set(tid, { tid, passport, items: [] })
+    const daysLeft: number = entry.days_left
+    const threshold: 7 | 3 | 1 = daysLeft <= 1 ? 1 : daysLeft <= 3 ? 3 : 7
+
+    // Skip if this threshold was already sent for this visa entry
+    const { data: existing } = await supabase
+      .from('notification_log')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('visa_entry_id', entry.id)
+      .eq('threshold_days', threshold)
+      .maybeSingle()
+
+    if (existing) {
+      console.log(`[scheduler] already sent ${threshold}d reminder to ${tid}, skipping`)
+      continue
+    }
+
     const schemes = await topSchemesFor(supabase, passport, entry.country)
-    byUser.get(tid)!.items.push({ entry, daysLeft: entry.days_left, schemes })
-  }
+    const text = formatThresholdReminder(entry, daysLeft, threshold, schemes)
 
-  console.log(`[scheduler] sending to ${byUser.size} users`)
-
-  for (const { tid, items } of byUser.values()) {
-    const msg = formatBatchReminderMessage(items)
     try {
-      await bot.telegram.sendMessage(tid, msg, { parse_mode: 'HTML' })
-      console.log(`[scheduler] sent batch (${items.length} entries) to ${tid}`)
+      await bot.telegram.sendMessage(tid, text, {
+        parse_mode: 'HTML',
+        reply_markup: {
+          inline_keyboard: [[{ text: '📱 Открыть Overstay', web_app: { url: frontendUrl } }]],
+        },
+      })
+
+      await supabase.from('notification_log').insert({
+        user_id: userId,
+        visa_entry_id: entry.id,
+        threshold_days: threshold,
+      })
+
+      console.log(`[scheduler] sent ${threshold}d reminder to ${tid} for entry ${entry.id}`)
     } catch (e) {
       console.error(`[scheduler] send to ${tid} failed:`, e)
     }
@@ -243,12 +265,12 @@ export async function checkUserStatus(bot: Telegraf, supabase: SupabaseClient, t
   }
 }
 
-export function startScheduler(bot: Telegraf) {
+export function startScheduler(bot: Telegraf, frontendUrl: string) {
   const supabase = getSupabase()
   // Runs every hour. Inside runDeadlineSweep we filter by user's local hour = 10
   // so each user gets their reminder at 10:00 in their own timezone.
   cron.schedule('0 * * * *', () => {
-    void runDeadlineSweep(bot, supabase)
+    void runDeadlineSweep(bot, supabase, frontendUrl)
   })
 }
 
