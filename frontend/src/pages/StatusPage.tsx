@@ -40,7 +40,7 @@ export default function StatusPage({
         <EmptyState onAdd={onStamp} />
       )}
 
-      <ActionGrid onFaq={() => onNavigate('faq')} onStamp={onStamp} onPdf={onPdf} />
+      <ActionGrid onFaq={() => onNavigate('chat')} onStamp={onStamp} onPdf={onPdf} />
 
       {history.length > 0 && (
         <>

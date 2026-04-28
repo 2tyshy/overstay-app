@@ -3,12 +3,10 @@ import { ThemeProvider } from '@/context/ThemeContext'
 import Header from '@/components/Header'
 import BottomNav from '@/components/BottomNav'
 import StatusPage from '@/pages/StatusPage'
-import SchemesPage from '@/pages/SchemesPage'
 import NextPage from '@/pages/NextPage'
-import FAQPage from '@/pages/FAQPage'
+import ChatPage from '@/pages/ChatPage'
 import AddEntrySheet from '@/components/AddEntrySheet'
 import EntryDetailSheet from '@/components/EntryDetailSheet'
-import ChatSheet from '@/components/ChatSheet'
 import CameraSheet from '@/components/CameraSheet'
 import Toast from '@/components/Toast'
 import type { Screen, VisaEntry, PassportCountry } from '@/types'
@@ -22,9 +20,8 @@ import type { VisaEntryRow } from '@/lib/supabase'
 
 const SCREEN_TITLES: Record<Screen, string> = {
   status: 'Overstay',
-  schemes: 'Схемы',
-  next: 'Дальше',
-  faq: 'FAQ',
+  next: 'Куда',
+  chat: 'Помощник',
 }
 
 // Seed uses realistic 2026 data. Entry visa_type strings are normalized
@@ -127,7 +124,6 @@ function sumDaysSpent(entries: VisaEntry[]): number {
 export default function App() {
   const [screen, setScreen] = useState<Screen>('status')
   const [entrySheetOpen, setEntrySheetOpen] = useState(false)
-  const [chatOpen, setChatOpen] = useState(false)
   const [cameraOpen, setCameraOpen] = useState(false)
   const [entries, setEntries] = useState<VisaEntry[]>(loadEntries)
   const [passport, setPassport] = useState<PassportCountry>(loadPassport)
@@ -360,7 +356,6 @@ export default function App() {
           title={SCREEN_TITLES[screen]}
           passport={passport}
           onPassportChange={handlePassportChange}
-          onChatOpen={() => setChatOpen(true)}
           onRefresh={handleRefresh}
         />
 
@@ -375,9 +370,8 @@ export default function App() {
               totalDaysSpent={sumDaysSpent(entries)}
             />
           )}
-          {screen === 'schemes' && <SchemesPage passport={passport} currentCountry={sorted[0]?.country} />}
           {screen === 'next' && <NextPage onNavigate={setScreen} entries={sorted} passport={passport} />}
-          {screen === 'faq' && <FAQPage />}
+          {screen === 'chat' && <ChatPage passport={passport} entries={sorted} />}
         </div>
 
         <BottomNav active={screen} onChange={setScreen} />
@@ -407,14 +401,7 @@ export default function App() {
           open={cameraOpen}
           onClose={() => setCameraOpen(false)}
           onApply={handleOcrApply}
-          onNeedApiKey={() => { setCameraOpen(false); setChatOpen(true); showToast('Добавь API ключ Gemini') }}
-        />
-
-        <ChatSheet
-          open={chatOpen}
-          onClose={() => setChatOpen(false)}
-          passport={passport}
-          entries={sorted}
+          onNeedApiKey={() => { setCameraOpen(false); setScreen('chat'); showToast('Добавь API ключ Gemini') }}
         />
 
         {toast && <Toast message={toast} />}

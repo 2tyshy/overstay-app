@@ -1,16 +1,20 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
-import { Send, Sparkles, Trash2, Key, Info, Loader2 } from 'lucide-react'
-import BottomSheet from './BottomSheet'
+import { Send, Trash2, Key, Info, Loader2 } from 'lucide-react'
 import { chat as geminiChat, hasAiAccess, setUserGeminiKey, clearUserGeminiKey, type GeminiMessage } from '@/lib/gemini'
 import { COUNTRY_NAMES, type VisaEntry, type PassportCountry } from '@/types'
 import { formatDateFull } from '@/lib/dates'
 
-interface Props {
-  open: boolean
-  onClose: () => void
-  passport: PassportCountry
-  entries: VisaEntry[]
-}
+const LS_HISTORY = 'overstay_chat_history'
+const MAX_HISTORY = 40
+
+const FAQ_CHIPS = [
+  'Куда лучше лететь на следующую визу?',
+  'Как работает visa run из Таиланда?',
+  'Что такое DTV и кому подходит?',
+  'Сколько стоит жизнь в Чиангмае?',
+  'E-visa vs VOA — в чём разница?',
+  'Когда мне нужно выезжать?',
+]
 
 interface ChatMsg {
   id: string
@@ -19,15 +23,11 @@ interface ChatMsg {
   ts: number
 }
 
-const LS_HISTORY = 'overstay_chat_history'
-const MAX_HISTORY = 40
-
-const SUGGESTED: string[] = [
-  'Куда мне лететь дальше?',
-  'Что с моей визой?',
-  'Как сделать визаран из Таиланда?',
-  'Посчитай когда истекает',
-]
+interface Props {
+  passport: PassportCountry
+  entries: VisaEntry[]
+  prefill?: string
+}
 
 function loadHistory(): ChatMsg[] {
   try {
@@ -40,14 +40,13 @@ function loadHistory(): ChatMsg[] {
 }
 
 function saveHistory(msgs: ChatMsg[]) {
-  try { localStorage.setItem(LS_HISTORY, JSON.stringify(msgs.slice(-MAX_HISTORY))) } catch { /* ignore */ }
+  try { localStorage.setItem(LS_HISTORY, JSON.stringify(msgs.slice(-MAX_HISTORY))) } catch { }
 }
 
 function genId(): string {
   return `m_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`
 }
 
-// Build system prompt with user's current context so answers are relevant.
 function buildSystemPrompt(passport: PassportCountry, entries: VisaEntry[]): string {
   const active = entries.find(e => e.days_left > 0)
   const history = entries.slice(0, 5).map(e => {
@@ -69,11 +68,44 @@ ${history}
 - Не ври про визовые правила — если не уверен, скажи "уточни в консульстве" или "проверь актуальные правила".
 - Учитывай, что для RU паспорта Корея сейчас с визой, DTV в Таиланде требует оформления, Шенген недоступен без доп. виз.
 - Советуя визаран, предлагай конкретные схемы: через Камбоджу/Лаос/Малайзию из Таиланда и т.д.
-- Не давай юридических или налоговых консультаций — направь к специалисту.
+- Не давай юридических или налоговых консультаций — направи к специалисту.
 - Если вопрос не про визы/поездки — вежливо верни к теме приложения.`
 }
 
-export default function ChatSheet({ open, onClose, passport, entries }: Props) {
+function renderLightMarkdown(text: string): string {
+  const escaped = text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+  return escaped
+    .replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>')
+    .replace(/(^|\n)[-•] (.+)/g, '$1• $2')
+    .replace(/`([^`]+)`/g, '<code style="font-family:var(--font-mono);font-size:0.9em;opacity:0.85">$1</code>')
+}
+
+function MessageBubble({ msg }: { msg: ChatMsg }) {
+  const isUser = msg.role === 'user'
+  return (
+    <div className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
+      <div
+        className="max-w-[85%] px-3 py-2 rounded-[12px] border"
+        style={{
+          background: isUser ? 'var(--text1)' : 'var(--bg2)',
+          borderColor: isUser ? 'var(--text1)' : 'var(--border)',
+          color: isUser ? 'var(--bg)' : 'var(--text1)',
+          animation: 'cardIn 0.25s cubic-bezier(0.16,1,0.3,1) both',
+        }}
+      >
+        <div
+          className="text-[13px] leading-relaxed whitespace-pre-wrap break-words"
+          dangerouslySetInnerHTML={{ __html: renderLightMarkdown(msg.content) }}
+        />
+      </div>
+    </div>
+  )
+}
+
+export default function ChatPage({ passport, entries, prefill }: Props) {
   const [messages, setMessages] = useState<ChatMsg[]>(loadHistory)
   const [input, setInput] = useState('')
   const [sending, setSending] = useState(false)
@@ -82,12 +114,12 @@ export default function ChatSheet({ open, onClose, passport, entries }: Props) {
   const [error, setError] = useState('')
   const scrollRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
+  const prefillSentRef = useRef(false)
 
-  const hasKey = useMemo(() => hasAiAccess(), [keyMode, open])
+  const hasKey = useMemo(() => hasAiAccess(), [keyMode])
 
   useEffect(() => { saveHistory(messages) }, [messages])
 
-  // Auto-scroll on new message
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight
   }, [messages.length, sending])
@@ -122,13 +154,21 @@ export default function ChatSheet({ open, onClose, passport, entries }: Props) {
       } else {
         setError(e?.message || 'Ошибка связи')
       }
-      // Roll back the user message since we couldn't get a reply
       setMessages(prev => prev.filter(m => m.id !== userMsg.id))
       setInput(trimmed)
     } finally {
       setSending(false)
     }
   }, [messages, sending, systemPrompt])
+
+  // Auto-send prefill once on mount when history is empty
+  useEffect(() => {
+    if (prefill && messages.length === 0 && !prefillSentRef.current) {
+      prefillSentRef.current = true
+      send(prefill)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prefill])
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -156,61 +196,42 @@ export default function ChatSheet({ open, onClose, passport, entries }: Props) {
   }
 
   return (
-    <BottomSheet open={open} onClose={onClose} height="90vh">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-3 -mt-1">
-        <div className="flex items-center gap-2">
-          <div
-            className="w-7 h-7 rounded-full flex items-center justify-center"
-            style={{ background: 'var(--alert-bg)', color: 'var(--alert-text)' }}
-          >
-            <Sparkles size={13} strokeWidth={1.5} />
-          </div>
-          <div>
-            <div className="text-[15px] font-semibold" style={{ color: 'var(--text1)' }}>
-              Ассистент
-            </div>
-            <div className="font-mono text-[9px]" style={{ color: 'var(--text4)', letterSpacing: '0.08em' }}>
-              Gemini · знает твой контекст
-            </div>
-          </div>
-        </div>
-        <div className="flex items-center gap-1">
-          {messages.length > 0 && (
-            <button
-              onClick={clearHistory}
-              className="p-1.5 rounded transition-colors active:scale-90"
-              style={{ color: 'var(--text3)' }}
-              title="Очистить историю"
-            >
-              <Trash2 size={14} strokeWidth={1.5} />
-            </button>
-          )}
+    <div className="flex flex-col h-full overflow-hidden">
+      {/* Toolbar */}
+      <div className="flex items-center justify-end gap-1 px-4 pt-2 pb-1 shrink-0">
+        {messages.length > 0 && (
           <button
-            onClick={() => setKeyMode(p => !p)}
+            onClick={clearHistory}
             className="p-1.5 rounded transition-colors active:scale-90"
-            style={{ color: hasKey ? 'var(--text3)' : 'var(--alert-text)' }}
-            title="API ключ"
+            style={{ color: 'var(--text3)' }}
           >
-            <Key size={14} strokeWidth={1.5} />
+            <Trash2 size={14} strokeWidth={1.5} />
           </button>
-        </div>
+        )}
+        <button
+          onClick={() => setKeyMode(p => !p)}
+          className="p-1.5 rounded transition-colors active:scale-90"
+          style={{ color: hasKey ? 'var(--text3)' : 'var(--alert-text)' }}
+        >
+          <Key size={14} strokeWidth={1.5} />
+        </button>
       </div>
 
       {/* Key-mode editor */}
       {keyMode && (
         <div
-          className="p-3 rounded-[10px] border mb-3"
+          className="mx-4 mt-2 mb-2 p-3 rounded-[10px] border shrink-0"
           style={{ background: 'var(--bg3)', borderColor: 'var(--border)' }}
         >
           <div className="flex items-center gap-2 mb-2">
             <Info size={12} strokeWidth={1.5} style={{ color: 'var(--text3)' }} />
-            <span className="font-mono text-[10px]" style={{ color: 'var(--text2)' }}>
-              Gemini API ключ
-            </span>
+            <span className="font-mono text-[10px]" style={{ color: 'var(--text2)' }}>Gemini API ключ</span>
           </div>
           <div className="font-mono text-[9px] leading-relaxed mb-2" style={{ color: 'var(--text3)' }}>
-            Получи бесплатный ключ на <a href="https://aistudio.google.com/apikey" target="_blank" rel="noreferrer" style={{ color: 'var(--text1)', textDecoration: 'underline' }}>aistudio.google.com/apikey</a>. Хранится локально в браузере.
+            Получи бесплатный ключ на{' '}
+            <a href="https://aistudio.google.com/apikey" target="_blank" rel="noreferrer" style={{ color: 'var(--text1)', textDecoration: 'underline' }}>
+              aistudio.google.com/apikey
+            </a>. Хранится локально.
           </div>
           <input
             type="password"
@@ -224,7 +245,7 @@ export default function ChatSheet({ open, onClose, passport, entries }: Props) {
             <button
               onClick={saveKey}
               disabled={!keyInput.trim()}
-              className="flex-1 py-2 rounded text-[12px] font-semibold transition-all active:scale-[0.98] disabled:opacity-40 disabled:pointer-events-none"
+              className="flex-1 py-2 rounded text-[12px] font-semibold active:scale-[0.98] disabled:opacity-40"
               style={{ background: 'var(--text1)', color: 'var(--bg)' }}
             >
               Сохранить
@@ -232,7 +253,7 @@ export default function ChatSheet({ open, onClose, passport, entries }: Props) {
             {hasKey && (
               <button
                 onClick={forgetKey}
-                className="py-2 px-3 rounded text-[12px] transition-all active:scale-[0.98]"
+                className="py-2 px-3 rounded text-[12px] active:scale-[0.98]"
                 style={{ background: 'var(--danger-bg)', color: 'var(--danger-text)', border: '1px solid var(--danger-border)' }}
               >
                 Забыть
@@ -242,58 +263,61 @@ export default function ChatSheet({ open, onClose, passport, entries }: Props) {
         </div>
       )}
 
-      {/* Messages */}
+      {/* Messages / Empty state */}
       <div
         ref={scrollRef}
-        className="overflow-y-auto mb-3 space-y-3"
-        style={{ maxHeight: 'calc(90vh - 220px)', minHeight: '200px' }}
+        className="flex-1 overflow-y-auto px-4"
+        style={{ scrollbarWidth: 'none' }}
       >
         {messages.length === 0 && !keyMode && (
-          <div className="text-center py-6">
-            <Sparkles size={22} strokeWidth={1.5} className="mx-auto mb-3" style={{ color: 'var(--text4)' }} />
-            <div className="text-[13px] font-medium mb-1" style={{ color: 'var(--text2)' }}>
-              Чем помочь?
+          <div className="pt-8 pb-4">
+            <div className="mb-6">
+              <div className="text-[20px] font-semibold mb-1" style={{ color: 'var(--text1)' }}>
+                Чем помочь?
+              </div>
+              <div className="font-mono text-[11px]" style={{ color: 'var(--text3)' }}>
+                Спроси про визы, налоги, города — отвечу с учётом твоей визы
+              </div>
             </div>
-            <div className="font-mono text-[10px] mb-4" style={{ color: 'var(--text4)' }}>
-              Я знаю твой паспорт и активные визы
-            </div>
-            <div className="flex flex-wrap gap-1.5 justify-center">
-              {SUGGESTED.map(s => (
+            <div className="flex flex-col gap-2">
+              {FAQ_CHIPS.map(q => (
                 <button
-                  key={s}
-                  onClick={() => send(s)}
-                  className="px-2.5 py-1.5 rounded-full border text-[11px] transition-all active:scale-95"
-                  style={{ background: 'var(--bg2)', borderColor: 'var(--border)', color: 'var(--text2)' }}
+                  key={q}
+                  onClick={() => send(q)}
+                  className="w-full text-left border rounded-xl px-4 py-3 font-mono text-[12px] active:opacity-70 transition-opacity"
+                  style={{ borderColor: 'var(--border)', color: 'var(--text2)', background: 'var(--bg2)' }}
                 >
-                  {s}
+                  {q}
                 </button>
               ))}
             </div>
           </div>
         )}
 
-        {messages.map(m => <MessageBubble key={m.id} msg={m} />)}
-
-        {sending && (
-          <div className="flex items-center gap-2 px-3 py-2">
-            <Loader2 size={14} strokeWidth={1.5} className="animate-spin" style={{ color: 'var(--text3)' }} />
-            <span className="font-mono text-[10px]" style={{ color: 'var(--text3)' }}>Думаю...</span>
-          </div>
-        )}
-
-        {error && !sending && (
-          <div
-            className="px-3 py-2 rounded-[8px] border font-mono text-[10px]"
-            style={{ background: 'var(--danger-bg)', borderColor: 'var(--danger-border)', color: 'var(--danger-text)' }}
-          >
-            {error}
+        {messages.length > 0 && (
+          <div className="space-y-3 py-4">
+            {messages.map(m => <MessageBubble key={m.id} msg={m} />)}
+            {sending && (
+              <div className="flex items-center gap-2 px-3 py-2">
+                <Loader2 size={14} strokeWidth={1.5} className="animate-spin" style={{ color: 'var(--text3)' }} />
+                <span className="font-mono text-[10px]" style={{ color: 'var(--text3)' }}>Думаю...</span>
+              </div>
+            )}
+            {error && !sending && (
+              <div
+                className="px-3 py-2 rounded-[8px] border font-mono text-[10px]"
+                style={{ background: 'var(--danger-bg)', borderColor: 'var(--danger-border)', color: 'var(--danger-text)' }}
+              >
+                {error}
+              </div>
+            )}
           </div>
         )}
       </div>
 
       {/* Input */}
       <div
-        className="flex items-end gap-2 pt-3 border-t"
+        className="flex items-end gap-2 px-4 pt-3 pb-6 border-t shrink-0"
         style={{ borderColor: 'var(--border)' }}
       >
         <textarea
@@ -302,7 +326,7 @@ export default function ChatSheet({ open, onClose, passport, entries }: Props) {
           value={input}
           onChange={e => setInput(e.target.value)}
           onKeyDown={onKeyDown}
-          placeholder={hasKey ? 'Спроси что-нибудь...' : 'Сначала добавь API ключ →'}
+          placeholder={hasKey ? 'Спроси что-нибудь…' : 'Сначала добавь API ключ →'}
           disabled={!hasKey || sending}
           className="flex-1 resize-none px-3 py-2.5 rounded-[10px] border text-[13px] leading-snug disabled:opacity-50"
           style={{
@@ -315,47 +339,12 @@ export default function ChatSheet({ open, onClose, passport, entries }: Props) {
         <button
           onClick={() => send(input)}
           disabled={!input.trim() || sending || !hasKey}
-          className="w-10 h-10 rounded-[10px] flex items-center justify-center transition-all active:scale-[0.92] disabled:opacity-30 disabled:pointer-events-none shrink-0"
+          className="w-10 h-10 rounded-[10px] flex items-center justify-center transition-all active:scale-[0.92] disabled:opacity-30 shrink-0"
           style={{ background: 'var(--text1)', color: 'var(--bg)' }}
         >
           <Send size={15} strokeWidth={2} />
         </button>
       </div>
-    </BottomSheet>
-  )
-}
-
-function MessageBubble({ msg }: { msg: ChatMsg }) {
-  const isUser = msg.role === 'user'
-  return (
-    <div className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
-      <div
-        className="max-w-[85%] px-3 py-2 rounded-[12px] border"
-        style={{
-          background: isUser ? 'var(--text1)' : 'var(--bg2)',
-          borderColor: isUser ? 'var(--text1)' : 'var(--border)',
-          color: isUser ? 'var(--bg)' : 'var(--text1)',
-          animation: 'cardIn 0.25s cubic-bezier(0.16,1,0.3,1) both',
-        }}
-      >
-        <div
-          className="text-[13px] leading-relaxed whitespace-pre-wrap break-words"
-          style={{ color: 'inherit' }}
-          dangerouslySetInnerHTML={{ __html: renderLightMarkdown(msg.content) }}
-        />
-      </div>
     </div>
   )
-}
-
-// Very light Markdown: **bold**, simple lists, escape HTML first.
-function renderLightMarkdown(text: string): string {
-  const escaped = text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-  return escaped
-    .replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>')
-    .replace(/(^|\n)[-•] (.+)/g, '$1• $2')
-    .replace(/`([^`]+)`/g, '<code style="font-family:var(--font-mono);font-size:0.9em;opacity:0.85">$1</code>')
 }

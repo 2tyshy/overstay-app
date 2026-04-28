@@ -58,7 +58,7 @@ export default function NextPage({ onNavigate, entries, passport }: Props) {
       </div>
 
       {rules.map((rule, i) => (
-        <DestRow key={rule.country} rule={rule} index={i} onClick={() => onNavigate('schemes')} />
+        <DestRow key={rule.country} rule={rule} index={i} onClick={() => onNavigate('chat')} />
       ))}
     </div>
   )

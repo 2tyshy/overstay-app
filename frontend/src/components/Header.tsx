@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { MessageCircle, RefreshCw } from 'lucide-react'
+import { RefreshCw } from 'lucide-react'
 import ThemeToggle from './ThemeToggle'
 import { COUNTRY_FLAGS, type PassportCountry } from '@/types'
 
@@ -9,11 +9,10 @@ interface Props {
   title: string
   passport: PassportCountry
   onPassportChange: (p: PassportCountry) => void
-  onChatOpen: () => void
   onRefresh: () => void
 }
 
-export default function Header({ title, passport, onPassportChange, onChatOpen, onRefresh }: Props) {
+export default function Header({ title, passport, onPassportChange, onRefresh }: Props) {
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
@@ -53,13 +52,6 @@ export default function Header({ title, passport, onPassportChange, onChatOpen, 
         >
           <RefreshCw size={16} strokeWidth={1.5} />
         </button>
-        <button
-          onClick={onChatOpen}
-          className="p-1.5 rounded-lg transition-colors"
-          style={{ color: 'var(--text3)' }}
-        >
-          <MessageCircle size={18} strokeWidth={1.5} />
-        </button>
         <div ref={ref} className="relative">
           <div
             onClick={() => setDropdownOpen(prev => !prev)}
@@ -68,7 +60,7 @@ export default function Header({ title, passport, onPassportChange, onChatOpen, 
           >
             <span className="text-[13px]">{COUNTRY_FLAGS[passport]}</span>
             <span className="font-mono text-[10px]" style={{ color: 'var(--text2)', letterSpacing: '0.1em' }}>
-              {passport} · Pass
+              {passport}
             </span>
           </div>
           {dropdownOpen && (
