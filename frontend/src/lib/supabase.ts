@@ -103,6 +103,35 @@ export async function deleteVisaEntry(userId: string | undefined, entryId: strin
   return { ok: true }
 }
 
+export type VisaEntryRow = {
+  id: string; user_id: string; country: string; visa_type: string
+  entry_date: string; max_days: number; visa_start: string | null
+  visa_end: string | null; notes: string | null; created_at: string
+}
+
+export async function fetchVisaEntries(userId: string): Promise<VisaEntryRow[] | null> {
+  if (!isUuid(userId)) return null
+  const { data, error } = await supabase
+    .from('visa_entries')
+    .select('*')
+    .eq('user_id', userId)
+    .order('entry_date', { ascending: false })
+  if (error) {
+    console.error('[supabase] fetchVisaEntries failed:', error)
+    return null
+  }
+  return (data ?? []) as VisaEntryRow[]
+}
+
+export async function updatePassportCountry(userId: string, passport: string): Promise<void> {
+  if (!isUuid(userId)) return
+  const { error } = await supabase
+    .from('users')
+    .update({ passport_country: passport })
+    .eq('id', userId)
+  if (error) console.warn('[supabase] updatePassportCountry failed:', error.message)
+}
+
 export async function updateUserTimezone(userId: string, timezone: string): Promise<void> {
   if (!isUuid(userId)) return
   const { error } = await supabase

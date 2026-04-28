@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useMemo } from 'react'
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react'
 import { ThemeProvider } from '@/context/ThemeContext'
 import Header from '@/components/Header'
 import BottomNav from '@/components/BottomNav'
@@ -16,7 +16,8 @@ import { computeMaxDays } from '@/lib/visaRules'
 import { calcDeadline, calcDaysLeft, parseLocalDate, todayLocal, effectiveDeadline } from '@/lib/dates'
 import type { OcrResult } from '@/lib/ocr'
 import { useUser } from '@/hooks/useUser'
-import { upsertVisaEntry, deleteVisaEntry } from '@/lib/supabase'
+import { upsertVisaEntry, deleteVisaEntry, fetchVisaEntries, updatePassportCountry } from '@/lib/supabase'
+import type { VisaEntryRow } from '@/lib/supabase'
 
 const SCREEN_TITLES: Record<Screen, string> = {
   status: 'Overstay',
@@ -92,6 +93,24 @@ function sortEntries(entries: VisaEntry[]): VisaEntry[] {
   })
 }
 
+function rowToEntry(row: VisaEntryRow): VisaEntry {
+  const { deadline, maxDays } = effectiveDeadline(row.entry_date, row.max_days, row.visa_end ?? undefined)
+  return {
+    id: row.id,
+    user_id: row.user_id,
+    country: row.country,
+    visa_type: row.visa_type,
+    entry_date: row.entry_date,
+    max_days: maxDays,
+    visa_start: row.visa_start ?? undefined,
+    visa_end: row.visa_end ?? undefined,
+    notes: row.notes ?? undefined,
+    created_at: row.created_at,
+    deadline,
+    days_left: calcDaysLeft(deadline),
+  }
+}
+
 // Sum of days actually spent on each trip (bounded by today).
 function sumDaysSpent(entries: VisaEntry[]): number {
   const today = todayLocal().getTime()
@@ -121,11 +140,24 @@ export default function App() {
   // without this the cron + /check never see anything the user enters.
   const { user } = useUser(passport)
   const userId = user?.id
+  const passportSyncedRef = useRef(false)
 
   const sorted = useMemo(() => sortEntries(entries), [entries])
 
   useEffect(() => { localStorage.setItem(LS_ENTRIES, JSON.stringify(entries)) }, [entries])
   useEffect(() => { localStorage.setItem(LS_PASSPORT, passport) }, [passport])
+
+  // Sync passport from DB on first user resolution — DB is source of truth
+  // across devices. Only runs once; user-initiated changes go through
+  // handlePassportChange which updates both local state and Supabase.
+  useEffect(() => {
+    if (!user || passportSyncedRef.current) return
+    const dbPassport = user.passport_country as PassportCountry
+    if (dbPassport === 'RU' || dbPassport === 'UA' || dbPassport === 'KZ') {
+      passportSyncedRef.current = true
+      setPassport(dbPassport)
+    }
+  }, [user])
 
   // When the user switches passport, recompute max_days + deadline
   // for entries where the rules differ (e.g. Korea). We also re-apply the
@@ -140,29 +172,40 @@ export default function App() {
     }))
   }, [passport])
 
-  // One-shot backfill: when the user row resolves, mirror every localStorage
-  // entry that isn't already in Supabase. Needed because prior builds only
-  // wrote to localStorage — the bot's cron + /check never saw anything.
-  // Upsert is idempotent, so running this each session is cheap and catches
-  // entries added on other devices too.
+  // Cross-device sync: when userId resolves, pull entries from Supabase.
+  // DB is source of truth — replaces local state when the server has data.
+  // If DB is empty (first login on a new device), backfill from localStorage.
   useEffect(() => {
     if (!userId) return
     let cancelled = false
     ;(async () => {
-      let ok = 0
-      let lastErr = ''
-      for (const e of entries) {
-        if (cancelled) return
-        const r = await upsertVisaEntry(userId, e)
-        if (r.ok) ok++
-        else if (r.reason !== 'no-user' && r.reason !== 'bad-id') lastErr = r.reason
-      }
+      const dbRows = await fetchVisaEntries(userId)
       if (cancelled) return
-      if (lastErr) showToast(`☁ синк: ${ok}/${entries.length}, err: ${lastErr}`)
-      else if (ok > 0) showToast(`☁ синк: ${ok} виз → БД`)
+      if (dbRows && dbRows.length > 0) {
+        const dbEntries = dbRows.map(rowToEntry)
+        setEntries(dbEntries)
+        localStorage.setItem(LS_ENTRIES, JSON.stringify(dbEntries))
+      } else {
+        // DB empty — backfill from localStorage (first login on this account)
+        let ok = 0, lastErr = ''
+        for (const e of entries) {
+          if (cancelled) return
+          const r = await upsertVisaEntry(userId, e)
+          if (r.ok) ok++
+          else if (r.reason !== 'no-user' && r.reason !== 'bad-id') lastErr = r.reason
+        }
+        if (cancelled) return
+        if (lastErr) showToast(`☁ синк: ${ok}/${entries.length}, err: ${lastErr}`)
+        else if (ok > 0) showToast(`☁ синк: ${ok} виз → БД`)
+      }
     })()
     return () => { cancelled = true }
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId])
+
+  const handlePassportChange = useCallback((p: PassportCountry) => {
+    setPassport(p)
+    if (userId) void updatePassportCountry(userId, p)
   }, [userId])
 
   const showToast = useCallback((msg: string) => {
@@ -289,7 +332,7 @@ export default function App() {
         <Header
           title={SCREEN_TITLES[screen]}
           passport={passport}
-          onPassportChange={setPassport}
+          onPassportChange={handlePassportChange}
           onChatOpen={() => setChatOpen(true)}
           onRefresh={handleRefresh}
         />
