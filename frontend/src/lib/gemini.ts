@@ -54,22 +54,18 @@ export interface GeminiError extends Error {
   code?: string
 }
 
-async function call(body: object): Promise<string> {
+async function doFetch(body: object): Promise<Response> {
   const userKey = getGeminiKey()
-  let res: Response
-
   if (userKey) {
-    // Power user: call Gemini directly with their own key
     const url = `${GEMINI_BASE}/${MODEL}:generateContent?key=${encodeURIComponent(userKey)}`
-    res = await fetch(url, {
+    return fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     })
   } else if (PROXY_URL) {
-    // Default: route through server-side proxy (key stays in Edge Function)
     const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY ?? ''
-    res = await fetch(PROXY_URL, {
+    return fetch(PROXY_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -78,14 +74,28 @@ async function call(body: object): Promise<string> {
       body: JSON.stringify(body),
     })
   } else {
-    const err: GeminiError = Object.assign(new Error('no-api-key'), { code: 'NO_KEY' })
-    throw err
+    throw Object.assign(new Error('no-api-key'), { code: 'NO_KEY' }) as GeminiError
   }
+}
+
+async function call(body: object): Promise<string> {
+  let res = await doFetch(body)
+
+  // Single retry for transient server errors (503 overload, 502 gateway)
+  if (res.status === 503 || res.status === 502) {
+    await new Promise(r => setTimeout(r, 2000))
+    res = await doFetch(body)
+  }
+
   if (!res.ok) {
     const txt = await res.text().catch(() => '')
+    const code =
+      res.status === 401 ? 'BAD_KEY' :
+      res.status === 429 ? 'RATE_LIMIT' :
+      res.status === 503 ? 'OVERLOADED' : 'HTTP_ERROR'
     const err: GeminiError = Object.assign(
       new Error(`Gemini ${res.status}: ${txt.slice(0, 200)}`),
-      { status: res.status, code: res.status === 401 ? 'BAD_KEY' : res.status === 429 ? 'RATE_LIMIT' : 'HTTP_ERROR' },
+      { status: res.status, code },
     )
     throw err
   }

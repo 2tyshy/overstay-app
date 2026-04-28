@@ -151,6 +151,8 @@ export default function ChatPage({ passport, entries, prefill }: Props) {
         setError(e.code === 'BAD_KEY' ? 'Ключ неверный — обнови' : 'Нужен API ключ')
       } else if (e?.code === 'RATE_LIMIT') {
         setError('Лимит запросов — подожди минуту')
+      } else if (e?.code === 'OVERLOADED') {
+        setError('Gemini перегружен — попробуй ещё раз через несколько секунд')
       } else {
         setError(e?.message || 'Ошибка связи')
       }
