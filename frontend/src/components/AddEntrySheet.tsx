@@ -140,6 +140,10 @@ export default function AddEntrySheet({ open, onClose, onSave, initialData, pass
       if (diffDays > 30) return setError('Дата въезда слишком в будущем')
     }
 
+    if (visaStart && visaEnd && visaStart > visaEnd) {
+      return setError('Дата начала визы не может быть позже даты окончания')
+    }
+
     const maxDays = computeMaxDays(country, visaType, passport)
     if (maxDays === 0) {
       return setError(`Виза «${visaType}» недоступна для паспорта ${passport}`)

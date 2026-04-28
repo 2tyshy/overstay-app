@@ -125,6 +125,7 @@ export default function App() {
   const [screen, setScreen] = useState<Screen>('status')
   const [entrySheetOpen, setEntrySheetOpen] = useState(false)
   const [cameraOpen, setCameraOpen] = useState(false)
+  const [chatPrefill, setChatPrefill] = useState<string | undefined>(undefined)
   const [entries, setEntries] = useState<VisaEntry[]>(loadEntries)
   const [passport, setPassport] = useState<PassportCountry>(loadPassport)
   const [detailEntry, setDetailEntry] = useState<VisaEntry | null>(null)
@@ -287,6 +288,11 @@ export default function App() {
     })
   }, [editEntry, passport, showToast, userId])
 
+  const handleCityClick = useCallback((city: string, country: string) => {
+    setChatPrefill(`Расскажи про жизнь в ${city}, ${country}: стоимость жилья, интернет, инфраструктура для номадов`)
+    setScreen('chat')
+  }, [])
+
   const handleRefresh = useCallback(() => {
     setEntries(prev => prev.map(e => ({ ...e, days_left: calcDaysLeft(e.deadline) })))
     showToast('Обновлено')
@@ -321,11 +327,12 @@ export default function App() {
               entries={sorted}
               onStamp={() => setEntrySheetOpen(true)}
               onEntryClick={setDetailEntry}
+              onCityClick={handleCityClick}
               totalDaysSpent={sumDaysSpent(entries)}
             />
           )}
           {screen === 'next' && <NextPage onNavigate={setScreen} entries={sorted} passport={passport} />}
-          {screen === 'chat' && <ChatPage passport={passport} entries={sorted} />}
+          {screen === 'chat' && <ChatPage passport={passport} entries={sorted} prefill={chatPrefill} />}
         </div>
 
         <BottomNav active={screen} onChange={setScreen} />

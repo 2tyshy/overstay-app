@@ -10,10 +10,11 @@ interface Props {
   entries: VisaEntry[]
   onStamp: () => void
   onEntryClick: (entry: VisaEntry) => void
+  onCityClick?: (city: string, country: string) => void
   totalDaysSpent: number
 }
 
-export default function StatusPage({ entries, onStamp, onEntryClick, totalDaysSpent }: Props) {
+export default function StatusPage({ entries, onStamp, onEntryClick, onCityClick, totalDaysSpent }: Props) {
   const current = entries[0]
   const history = entries.slice(1)
 
@@ -47,7 +48,7 @@ export default function StatusPage({ entries, onStamp, onEntryClick, totalDaysSp
             <AlertStrip entry={current} />
           )}
 
-          <CountryCard countryCode={current.country} />
+          <CountryCard countryCode={current.country} onCityClick={onCityClick} />
         </>
       ) : (
         <EmptyState onAdd={onStamp} />
