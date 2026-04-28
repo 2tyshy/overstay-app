@@ -70,7 +70,12 @@ export default function FeedbackSheet({ open, onClose, userId, onSuccess }: Prop
       setTranscript(final)
     }
     rec.onerror = (e: any) => {
-      if (e.error !== 'aborted') setError('Ошибка микрофона: ' + e.error)
+      if (e.error === 'aborted') { setState('idle'); return }
+      if (e.error === 'service-not-allowed' || e.error === 'not-allowed') {
+        setError('Голосовой ввод недоступен в Telegram Desktop — напиши вручную')
+      } else {
+        setError('Ошибка микрофона: ' + e.error)
+      }
       setState('idle')
     }
     rec.onend = () => {
