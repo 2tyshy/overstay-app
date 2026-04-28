@@ -169,7 +169,7 @@ export async function runDeadlineSweep(bot: Telegraf, supabase: SupabaseClient, 
  * If the user has no row in `users` (e.g. they've never opened the app),
  * we reply with a hint rather than silently failing.
  */
-export async function checkUserStatus(bot: Telegraf, supabase: SupabaseClient, telegramId: number) {
+export async function checkUserStatus(bot: Telegraf, supabase: SupabaseClient, telegramId: number, frontendUrl: string) {
   console.log(`[check] start telegramId=${telegramId}`)
   let user: any = null
   let userErr: any = null
@@ -259,7 +259,12 @@ export async function checkUserStatus(bot: Telegraf, supabase: SupabaseClient, t
   }
 
   try {
-    await bot.telegram.sendMessage(telegramId, parts.join('\n\n———\n\n'), { parse_mode: 'HTML' })
+    await bot.telegram.sendMessage(telegramId, parts.join('\n\n———\n\n'), {
+      parse_mode: 'HTML',
+      reply_markup: {
+        inline_keyboard: [[{ text: '📱 Открыть Overstay', web_app: { url: frontendUrl } }]],
+      },
+    })
   } catch (e) {
     console.error(`[check] send to ${telegramId} failed:`, e)
   }
@@ -305,10 +310,10 @@ export async function registerUser(
  * doesn't need its own Supabase client. `check` runs the per-user status
  * report; `register` upserts a users row after an inline-keyboard tap.
  */
-export function createBotActions(bot: Telegraf) {
+export function createBotActions(bot: Telegraf, frontendUrl: string) {
   const supabase = getSupabase()
   return {
-    check: (telegramId: number) => checkUserStatus(bot, supabase, telegramId),
+    check: (telegramId: number) => checkUserStatus(bot, supabase, telegramId, frontendUrl),
     register: (telegramId: number, passport: Passport) => registerUser(supabase, telegramId, passport),
   }
 }

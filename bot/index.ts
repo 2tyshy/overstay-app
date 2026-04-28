@@ -33,7 +33,7 @@ bot.command('status', async (ctx) => {
 })
 
 // All Supabase-backed actions share one client via this factory.
-const actions = createBotActions(bot)
+const actions = createBotActions(bot, FRONTEND_URL)
 
 // /check runs the same DB query the cron does, but scoped to the caller.
 // This lets users poke the bot on demand ("сколько мне осталось?") instead of
