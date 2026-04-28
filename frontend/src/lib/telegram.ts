@@ -1,19 +1,21 @@
 import * as TwaSdk from '@twa-dev/sdk'
 
-const WebApp: any = (TwaSdk as any).default ?? TwaSdk
+function getWebApp(): any {
+  return (window as any)?.Telegram?.WebApp ?? (TwaSdk as any).default ?? TwaSdk
+}
 
 export function getTelegramUser() {
-  return WebApp?.initDataUnsafe?.user
+  return getWebApp()?.initDataUnsafe?.user
 }
 
 export function getTelegramId(): number | null {
-  return WebApp?.initDataUnsafe?.user?.id ?? null
+  return getWebApp()?.initDataUnsafe?.user?.id ?? null
 }
 
 export function getTelegramInitData(): string | null {
-  return WebApp?.initData ?? null
+  return getWebApp()?.initData ?? null
 }
 
 export function hapticFeedback(type: 'light' | 'medium' | 'heavy' = 'light') {
-  try { WebApp?.HapticFeedback?.impactOccurred?.(type) } catch { /* not in Telegram */ }
+  try { getWebApp()?.HapticFeedback?.impactOccurred?.(type) } catch { /* not in Telegram */ }
 }

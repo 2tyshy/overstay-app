@@ -22,7 +22,6 @@ export default function SchemesPage({ passport, currentCountry }: Props) {
 
   const [filter, setFilter] = useState('Все')
   const [addSheetOpen, setAddSheetOpen] = useState(false)
-  const [debugMsg, setDebugMsg] = useState('')
   const [editScheme, setEditScheme] = useState<import('@/types').Scheme | null>(null)
 
   // Add/Edit Scheme form state
@@ -120,15 +119,6 @@ export default function SchemesPage({ passport, currentCountry }: Props) {
   return (
     <div className="h-full overflow-y-auto px-[18px] pb-4" style={{ scrollbarWidth: 'none' }}>
       <SchemeFilters onFilter={setFilter} />
-      <div className="font-mono text-[9px] px-1 py-0.5 mb-1" style={{ color: 'var(--text3)' }}>
-        uid: {userId ?? 'null'} | tg: {typeof window !== 'undefined' ? String((window as any)?.Telegram?.WebApp?.initDataUnsafe?.user?.id ?? 'none') : '?'}
-      </div>
-      {debugMsg && (
-        <div className="mb-2 p-2 rounded border font-mono text-[10px]" style={{ background: 'var(--alert-bg)', borderColor: 'var(--alert-border)', color: 'var(--alert-text)' }}>
-          {debugMsg}
-        </div>
-      )}
-
       <div
         className="font-mono text-[9px] uppercase mt-4 mb-2 flex items-center gap-2.5"
         style={{ color: 'var(--text4)', letterSpacing: '0.24em' }}
@@ -180,14 +170,8 @@ export default function SchemesPage({ passport, currentCountry }: Props) {
           index={i}
           userVote={votes[scheme.id] ?? null}
           onVote={(id, v) => {
-            if (!isUuid(userId)) {
-              setDebugMsg('userId не UUID: ' + String(userId))
-              return
-            }
-            vote(id, v).catch((e) => {
-              const msg = (e as any)?.message || (e as any)?.code || JSON.stringify(e) || 'unknown'
-              setDebugMsg('Vote error: ' + msg)
-            })
+            if (!isUuid(userId)) return
+            vote(id, v).catch(console.error)
           }}
           onEdit={handleEdit}
           onDelete={handleDelete}
