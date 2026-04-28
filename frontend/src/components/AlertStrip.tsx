@@ -57,7 +57,7 @@ export default function AlertStrip({ entry }: Props) {
             Планируй ран · {days_left} {pluralDays(days_left)}
           </div>
           <div className="font-mono text-[10px]" style={{ color: 'var(--alert-text)', opacity: 0.7 }}>
-            Посмотри схемы из {country} — раздел «Схемы»
+            Спроси Помощника про визаран из {country}
           </div>
         </div>
       </div>

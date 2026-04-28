@@ -4,7 +4,6 @@ import SegmentedBar from './SegmentedBar'
 
 interface Props {
   entry: VisaEntry
-  stats: { countries: number; totalDays: number; runs: number }
   onClick?: () => void
 }
 

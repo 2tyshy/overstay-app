@@ -11,24 +11,17 @@ interface Props {
   onStamp: () => void
   onEntryClick: (entry: VisaEntry) => void
   onCityClick?: (city: string, country: string) => void
-  totalDaysSpent: number
 }
 
-export default function StatusPage({ entries, onStamp, onEntryClick, onCityClick, totalDaysSpent }: Props) {
+export default function StatusPage({ entries, onStamp, onEntryClick, onCityClick }: Props) {
   const current = entries[0]
   const history = entries.slice(1)
-
-  const stats = {
-    countries: new Set(entries.map(e => e.country)).size,
-    totalDays: totalDaysSpent,
-    runs: history.length,
-  }
 
   return (
     <div className="h-full overflow-y-auto px-[18px] pb-4" style={{ scrollbarWidth: 'none' }}>
       {current ? (
         <>
-          <HeroCard entry={current} stats={stats} onClick={() => onEntryClick(current)} />
+          <HeroCard entry={current} onClick={() => onEntryClick(current)} />
 
           {/* AlertStrip with inline edit CTA when warn/danger */}
           {current.days_left > 0 && current.days_left <= Math.ceil(current.max_days * 0.25) ? (

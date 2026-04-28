@@ -11,7 +11,7 @@ import CameraSheet from '@/components/CameraSheet'
 import Toast from '@/components/Toast'
 import type { Screen, VisaEntry, PassportCountry } from '@/types'
 import { computeMaxDays } from '@/lib/visaRules'
-import { calcDeadline, calcDaysLeft, parseLocalDate, todayLocal, effectiveDeadline } from '@/lib/dates'
+import { calcDeadline, calcDaysLeft, parseLocalDate, effectiveDeadline } from '@/lib/dates'
 import type { OcrResult } from '@/lib/ocr'
 import { isUuid } from '@/lib/uuid'
 import { useUser } from '@/hooks/useUser'
@@ -109,17 +109,6 @@ function rowToEntry(row: VisaEntryRow): VisaEntry {
   }
 }
 
-// Sum of days actually spent on each trip (bounded by today).
-function sumDaysSpent(entries: VisaEntry[]): number {
-  const today = todayLocal().getTime()
-  return entries.reduce((sum, e) => {
-    const start = parseLocalDate(e.entry_date).getTime()
-    const dead = parseLocalDate(e.deadline).getTime() + 86400000 // end of deadline day
-    const end = Math.min(today, dead)
-    if (end <= start) return sum
-    return sum + Math.ceil((end - start) / 86400000)
-  }, 0)
-}
 
 export default function App() {
   const [screen, setScreen] = useState<Screen>('status')
@@ -213,7 +202,7 @@ export default function App() {
     let cancelled = false
     const snapshot = entries  // capture current local entries for backfill
     syncFromDb(userId, snapshot).catch(e => {
-      if (!cancelled) showToast(`☁ ошибка синка: ${e instanceof Error ? e.message : String(e)}`)
+      if (!cancelled) showToast(`☁ ошибка синка: ${e instanceof Error ? e.message : String(e)}`, 'error')
     })
     return () => { cancelled = true }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -242,10 +231,10 @@ export default function App() {
     // Fire-and-forget mirror to Supabase. UI stays instant; server catches up.
     void deleteVisaEntry(userId, id).then(r => {
       if (!r.ok && r.reason !== 'no-user' && r.reason !== 'bad-id') {
-        showToast('DB delete failed: ' + r.reason)
+        showToast('DB delete failed: ' + r.reason, 'error')
       }
     })
-    showToast('Запись удалена')
+    showToast('Запись удалена', 'success')
   }, [showToast, userId])
 
   const handleSave = useCallback((data: { country: string; visa_type: string; entry_date: string; visa_start?: string; visa_end?: string }) => {
@@ -274,16 +263,16 @@ export default function App() {
     if (editEntry) {
       setEntries(prev => prev.map(e => e.id === editEntry.id ? newEntry : e))
       setEditEntry(null)
-      showToast('Запись обновлена')
+      showToast('Запись обновлена', 'success')
     } else {
       setEntries(prev => [newEntry, ...prev])
-      showToast('Запись добавлена')
+      showToast('Запись добавлена', 'success')
     }
     // Mirror to Supabase so the bot (and /check, and the daily cron) sees it.
     // Fire-and-forget: UI is already updated, network latency shouldn't block.
     void upsertVisaEntry(userId, newEntry).then(r => {
       if (!r.ok && r.reason !== 'no-user' && r.reason !== 'bad-id') {
-        showToast('DB sync failed: ' + r.reason)
+        showToast('DB sync failed: ' + r.reason, 'error')
       }
     })
   }, [editEntry, passport, showToast, userId])
@@ -328,7 +317,6 @@ export default function App() {
               onStamp={() => setEntrySheetOpen(true)}
               onEntryClick={setDetailEntry}
               onCityClick={handleCityClick}
-              totalDaysSpent={sumDaysSpent(entries)}
             />
           )}
           {screen === 'next' && <NextPage onNavigate={setScreen} entries={sorted} passport={passport} />}
