@@ -15,6 +15,7 @@ import type { Screen, VisaEntry, PassportCountry } from '@/types'
 import { computeMaxDays } from '@/lib/visaRules'
 import { calcDeadline, calcDaysLeft, parseLocalDate, todayLocal, effectiveDeadline } from '@/lib/dates'
 import type { OcrResult } from '@/lib/ocr'
+import { isUuid } from '@/lib/uuid'
 import { useUser } from '@/hooks/useUser'
 import { upsertVisaEntry, deleteVisaEntry, fetchVisaEntries, updatePassportCountry } from '@/lib/supabase'
 import type { VisaEntryRow } from '@/lib/supabase'
@@ -174,29 +175,41 @@ export default function App() {
 
   // Cross-device sync: when userId resolves, pull entries from Supabase.
   // DB is source of truth — replaces local state when the server has data.
-  // If DB is empty (first login on a new device), backfill from localStorage.
+  // If DB is empty, backfill any real (UUID-id) entries from localStorage;
+  // seed/demo entries (id '1','2','3') are skipped — they are never synced.
   useEffect(() => {
     if (!userId) return
     let cancelled = false
     ;(async () => {
-      const dbRows = await fetchVisaEntries(userId)
-      if (cancelled) return
-      if (dbRows && dbRows.length > 0) {
-        const dbEntries = dbRows.map(rowToEntry)
-        setEntries(dbEntries)
-        localStorage.setItem(LS_ENTRIES, JSON.stringify(dbEntries))
-      } else {
-        // DB empty — backfill from localStorage (first login on this account)
-        let ok = 0, lastErr = ''
-        for (const e of entries) {
-          if (cancelled) return
-          const r = await upsertVisaEntry(userId, e)
-          if (r.ok) ok++
-          else if (r.reason !== 'no-user' && r.reason !== 'bad-id') lastErr = r.reason
-        }
+      try {
+        const dbRows = await fetchVisaEntries(userId)
         if (cancelled) return
-        if (lastErr) showToast(`☁ синк: ${ok}/${entries.length}, err: ${lastErr}`)
-        else if (ok > 0) showToast(`☁ синк: ${ok} виз → БД`)
+        if (dbRows && dbRows.length > 0) {
+          const dbEntries = dbRows.map(rowToEntry)
+          setEntries(dbEntries)
+          localStorage.setItem(LS_ENTRIES, JSON.stringify(dbEntries))
+        } else {
+          // DB empty — backfill real entries (skip seed demo entries)
+          const realEntries = entries.filter(e => isUuid(e.id))
+          if (realEntries.length === 0) {
+            // No real entries anywhere — show empty state, hide seed data
+            setEntries([])
+            localStorage.removeItem(LS_ENTRIES)
+            return
+          }
+          let ok = 0, lastErr = ''
+          for (const e of realEntries) {
+            if (cancelled) return
+            const r = await upsertVisaEntry(userId, e)
+            if (r.ok) ok++
+            else if (r.reason !== 'no-user' && r.reason !== 'bad-id') lastErr = r.reason
+          }
+          if (cancelled) return
+          if (lastErr) showToast(`☁ синк: ${ok}/${realEntries.length}, err: ${lastErr}`)
+          else if (ok > 0) showToast(`☁ синк: ${ok} виз → БД`)
+        }
+      } catch (e) {
+        if (!cancelled) showToast(`☁ ошибка синка: ${e instanceof Error ? e.message : String(e)}`)
       }
     })()
     return () => { cancelled = true }
