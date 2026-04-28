@@ -319,7 +319,7 @@ export default function App() {
               onCityClick={handleCityClick}
             />
           )}
-          {screen === 'next' && <NextPage onNavigate={setScreen} entries={sorted} passport={passport} />}
+          {screen === 'next' && <NextPage entries={sorted} passport={passport} />}
           {screen === 'chat' && <ChatPage passport={passport} entries={sorted} prefill={chatPrefill} />}
         </div>
 

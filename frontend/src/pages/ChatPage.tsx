@@ -163,11 +163,15 @@ export default function ChatPage({ passport, entries, prefill }: Props) {
     }
   }, [messages, sending, systemPrompt])
 
-  // Auto-send prefill once on mount when history is empty
+  // Auto-send prefill when history is empty; prefill input field when history exists
   useEffect(() => {
-    if (prefill && messages.length === 0 && !prefillSentRef.current) {
+    if (!prefill) return
+    if (messages.length === 0 && !prefillSentRef.current) {
       prefillSentRef.current = true
       send(prefill)
+    } else if (messages.length > 0) {
+      setInput(prefill)
+      setTimeout(() => inputRef.current?.focus(), 50)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [prefill])

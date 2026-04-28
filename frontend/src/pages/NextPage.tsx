@@ -1,9 +1,9 @@
-import { useMemo } from 'react'
-import { RefreshCw, WifiOff } from 'lucide-react'
+import { useMemo, useState, useRef } from 'react'
+import { RefreshCw, WifiOff, X } from 'lucide-react'
 import StatusBanner from '@/components/StatusBanner'
 import DestRow from '@/components/DestRow'
 import SchemeCard from '@/components/SchemeCard'
-import type { Screen, VisaEntry, PassportCountry } from '@/types'
+import type { VisaEntry, PassportCountry } from '@/types'
 import { COUNTRY_DATA } from '@/lib/visaRules'
 import { useSchemes } from '@/hooks/useSchemes'
 import { useCommentCounts } from '@/hooks/useSchemeComments'
@@ -11,7 +11,6 @@ import { useUser } from '@/hooks/useUser'
 import { isUuid } from '@/lib/uuid'
 
 interface Props {
-  onNavigate: (screen: Screen) => void
   entries: VisaEntry[]
   passport: PassportCountry
 }
@@ -47,7 +46,7 @@ function getRulesForPassport(passport: PassportCountry): DestRule[] {
   })
 }
 
-export default function NextPage({ onNavigate, entries, passport }: Props) {
+export default function NextPage({ entries, passport }: Props) {
   const current = entries[0]
   const rules = useMemo(() => getRulesForPassport(passport), [passport])
 
@@ -56,6 +55,22 @@ export default function NextPage({ onNavigate, entries, passport }: Props) {
   const { schemes, votes, loading: schemesLoading, error: schemesError, vote, refetch } = useSchemes(passport, userId)
   const schemeIds = useMemo(() => schemes.map(s => s.id), [schemes])
   const commentCounts = useCommentCounts(schemeIds)
+
+  const [filterCountry, setFilterCountry] = useState<string | null>(null)
+  const schemesRef = useRef<HTMLDivElement>(null)
+
+  const filteredSchemes = useMemo(() => {
+    if (!filterCountry) return schemes
+    const c = filterCountry.toUpperCase()
+    return schemes.filter(s =>
+      s.from_country?.toUpperCase() === c || s.to_country?.toUpperCase() === c
+    )
+  }, [schemes, filterCountry])
+
+  const handleDestClick = (country: string) => {
+    setFilterCountry(country)
+    setTimeout(() => schemesRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50)
+  }
 
   return (
     <div className="h-full overflow-y-auto px-[18px] pb-4" style={{ scrollbarWidth: 'none' }}>
@@ -70,15 +85,26 @@ export default function NextPage({ onNavigate, entries, passport }: Props) {
       </div>
 
       {rules.map((rule, i) => (
-        <DestRow key={rule.country} rule={rule} index={i} onClick={() => onNavigate('chat')} />
+        <DestRow key={rule.country} rule={rule} index={i} onClick={() => handleDestClick(rule.country)} />
       ))}
 
       {/* Визараны section */}
       <div
+        ref={schemesRef}
         className="font-mono text-[9px] uppercase mt-6 mb-3 flex items-center gap-2.5"
         style={{ color: 'var(--text4)', letterSpacing: '0.24em' }}
       >
         Визараны
+        {filterCountry && (
+          <button
+            onClick={() => setFilterCountry(null)}
+            className="flex items-center gap-1 px-1.5 py-0.5 rounded border transition-colors active:opacity-70"
+            style={{ borderColor: 'var(--border)', background: 'var(--bg2)', color: 'var(--text2)', letterSpacing: '0.04em' }}
+          >
+            {filterCountry}
+            <X size={9} />
+          </button>
+        )}
         <span className="flex-1 h-px" style={{ background: 'var(--border)' }} />
         {!schemesLoading && (
           <button onClick={refetch} className="opacity-40 active:opacity-100 transition-opacity">
@@ -103,13 +129,13 @@ export default function NextPage({ onNavigate, entries, passport }: Props) {
         </div>
       )}
 
-      {!schemesLoading && !schemesError && schemes.length === 0 && (
+      {!schemesLoading && !schemesError && filteredSchemes.length === 0 && (
         <div className="font-mono text-[10px] py-4 text-center" style={{ color: 'var(--text4)' }}>
-          Схем пока нет — будь первым!
+          {filterCountry ? `Схем для ${filterCountry} пока нет` : 'Схем пока нет — будь первым!'}
         </div>
       )}
 
-      {schemes.map((scheme, i) => (
+      {filteredSchemes.map((scheme, i) => (
         <SchemeCard
           key={scheme.id}
           scheme={scheme}
