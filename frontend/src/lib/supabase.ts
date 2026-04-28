@@ -141,3 +141,20 @@ export async function updateUserTimezone(userId: string, timezone: string): Prom
     console.warn('[supabase] updateUserTimezone failed:', error.message)
   }
 }
+
+export async function saveFeedback(payload: {
+  userId: string | undefined
+  content: string
+  rawTranscript: string
+  sentiment: 'positive' | 'neutral' | 'negative'
+  category: 'bug' | 'feature' | 'praise' | 'general'
+}): Promise<void> {
+  const { error } = await supabase.from('feedback').insert({
+    user_id: isUuid(payload.userId) ? payload.userId : null,
+    content: payload.content,
+    raw_transcript: payload.rawTranscript,
+    sentiment: payload.sentiment,
+    category: payload.category,
+  })
+  if (error) throw new Error(error.message)
+}

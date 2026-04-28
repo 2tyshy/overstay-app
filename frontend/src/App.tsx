@@ -16,6 +16,8 @@ import type { OcrResult } from '@/lib/ocr'
 import { isUuid } from '@/lib/uuid'
 import { useUser } from '@/hooks/useUser'
 import { upsertVisaEntry, deleteVisaEntry, fetchVisaEntries, updatePassportCountry } from '@/lib/supabase'
+import FeedbackButton from '@/components/FeedbackButton'
+import FeedbackSheet from '@/components/FeedbackSheet'
 import type { VisaEntryRow } from '@/lib/supabase'
 
 const SCREEN_TITLES: Record<Screen, string> = {
@@ -121,6 +123,7 @@ export default function App() {
   const [editEntry, setEditEntry] = useState<VisaEntry | null>(null)
   const [toast, setToast] = useState<{ message: string; type?: 'success' | 'error' | 'info' } | null>(null)
   const [ocrPrefill, setOcrPrefill] = useState<OcrResult | null>(null)
+  const [feedbackOpen, setFeedbackOpen] = useState(false)
 
   // Resolve/insert the Supabase user row so we have a real UUID to key
   // visa_entries off. The bot (service_role) reads from visa_entries, so
@@ -351,6 +354,15 @@ export default function App() {
           onClose={() => setCameraOpen(false)}
           onApply={handleOcrApply}
           onNeedApiKey={() => { setCameraOpen(false); setScreen('chat'); showToast('Добавь API ключ Gemini') }}
+        />
+
+        <FeedbackButton onClick={() => setFeedbackOpen(true)} />
+
+        <FeedbackSheet
+          open={feedbackOpen}
+          onClose={() => setFeedbackOpen(false)}
+          userId={userId}
+          onSuccess={() => showToast('Спасибо за отзыв!', 'success')}
         />
 
         {toast && <Toast message={toast.message} type={toast.type} />}
