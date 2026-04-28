@@ -173,58 +173,72 @@ export default function App() {
     }))
   }, [passport])
 
-  // Cross-device sync: when userId resolves, pull entries from Supabase.
-  // DB is source of truth — replaces local state when the server has data.
-  // If DB is empty, backfill any real (UUID-id) entries from localStorage;
-  // seed/demo entries (id '1','2','3') are skipped — they are never synced.
-  useEffect(() => {
-    if (!userId) return
-    let cancelled = false
-    ;(async () => {
-      try {
-        const dbRows = await fetchVisaEntries(userId)
-        if (cancelled) return
-        if (dbRows && dbRows.length > 0) {
-          const dbEntries = dbRows.map(rowToEntry)
-          setEntries(dbEntries)
-          localStorage.setItem(LS_ENTRIES, JSON.stringify(dbEntries))
-        } else {
-          // DB empty — backfill real entries (skip seed demo entries)
-          const realEntries = entries.filter(e => isUuid(e.id))
-          if (realEntries.length === 0) {
-            // No real entries anywhere — show empty state, hide seed data
-            setEntries([])
-            localStorage.removeItem(LS_ENTRIES)
-            return
-          }
-          let ok = 0, lastErr = ''
-          for (const e of realEntries) {
-            if (cancelled) return
-            const r = await upsertVisaEntry(userId, e)
-            if (r.ok) ok++
-            else if (r.reason !== 'no-user' && r.reason !== 'bad-id') lastErr = r.reason
-          }
-          if (cancelled) return
-          if (lastErr) showToast(`☁ синк: ${ok}/${realEntries.length}, err: ${lastErr}`)
-          else if (ok > 0) showToast(`☁ синк: ${ok} виз → БД`)
-        }
-      } catch (e) {
-        if (!cancelled) showToast(`☁ ошибка синка: ${e instanceof Error ? e.message : String(e)}`)
-      }
-    })()
-    return () => { cancelled = true }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId])
+  const showToast = useCallback((msg: string) => {
+    setToast(msg)
+    window.setTimeout(() => setToast(null), 2200)
+  }, [])
 
   const handlePassportChange = useCallback((p: PassportCountry) => {
     setPassport(p)
     if (userId) void updatePassportCountry(userId, p)
   }, [userId])
 
-  const showToast = useCallback((msg: string) => {
-    setToast(msg)
-    window.setTimeout(() => setToast(null), 2200)
-  }, [])
+  // Pull latest entries from DB and update state + localStorage.
+  // Used on mount (once userId resolves) and whenever the app regains focus.
+  const syncFromDb = useCallback(async (uid: string, localEntries: VisaEntry[]) => {
+    const dbRows = await fetchVisaEntries(uid)
+    if (dbRows && dbRows.length > 0) {
+      const dbEntries = dbRows.map(rowToEntry)
+      setEntries(dbEntries)
+      localStorage.setItem(LS_ENTRIES, JSON.stringify(dbEntries))
+    } else {
+      // DB empty — backfill real entries (skip non-UUID seed demo entries)
+      const realEntries = localEntries.filter(e => isUuid(e.id))
+      if (realEntries.length === 0) {
+        setEntries([])
+        localStorage.removeItem(LS_ENTRIES)
+        return
+      }
+      let ok = 0, lastErr = ''
+      for (const e of realEntries) {
+        const r = await upsertVisaEntry(uid, e)
+        if (r.ok) ok++
+        else if (r.reason !== 'no-user' && r.reason !== 'bad-id') lastErr = r.reason
+      }
+      if (lastErr) showToast(`☁ синк: ${ok}/${realEntries.length}, err: ${lastErr}`)
+      else if (ok > 0) showToast(`☁ синк: ${ok} виз → БД`)
+    }
+  }, [showToast])
+
+  // Initial sync when userId resolves.
+  useEffect(() => {
+    if (!userId) return
+    let cancelled = false
+    const snapshot = entries  // capture current local entries for backfill
+    syncFromDb(userId, snapshot).catch(e => {
+      if (!cancelled) showToast(`☁ ошибка синка: ${e instanceof Error ? e.message : String(e)}`)
+    })
+    return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId])
+
+  // Re-sync when app regains visibility — picks up deletes/edits from other devices.
+  useEffect(() => {
+    if (!userId) return
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') {
+        fetchVisaEntries(userId).then(rows => {
+          if (rows && rows.length > 0) {
+            const dbEntries = rows.map(rowToEntry)
+            setEntries(dbEntries)
+            localStorage.setItem(LS_ENTRIES, JSON.stringify(dbEntries))
+          }
+        }).catch(console.error)
+      }
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => document.removeEventListener('visibilitychange', onVisible)
+  }, [userId])
 
   const handleDelete = useCallback((id: string) => {
     setEntries(prev => prev.filter(e => e.id !== id))
