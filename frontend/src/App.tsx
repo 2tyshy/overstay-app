@@ -15,7 +15,7 @@ import { calcDeadline, calcDaysLeft, parseLocalDate, effectiveDeadline } from '@
 import type { OcrResult } from '@/lib/ocr'
 import { isUuid } from '@/lib/uuid'
 import { useUser } from '@/hooks/useUser'
-import { upsertVisaEntry, deleteVisaEntry, fetchVisaEntries, updatePassportCountry } from '@/lib/supabase'
+import { upsertVisaEntry, deleteVisaEntry, fetchVisaEntries } from '@/lib/supabase'
 import FeedbackButton from '@/components/FeedbackButton'
 import FeedbackSheet from '@/components/FeedbackSheet'
 import type { VisaEntryRow } from '@/lib/supabase'
@@ -167,11 +167,6 @@ export default function App() {
     window.setTimeout(() => setToast(null), 2200)
   }, [])
 
-  const handlePassportChange = useCallback((p: PassportCountry) => {
-    setPassport(p)
-    if (userId) void updatePassportCountry(userId, p)
-  }, [userId])
-
   // Pull latest entries from DB and update state + localStorage.
   // Used on mount (once userId resolves) and whenever the app regains focus.
   const syncFromDb = useCallback(async (uid: string, localEntries: VisaEntry[]) => {
@@ -308,8 +303,6 @@ export default function App() {
       <div className="h-screen flex flex-col overflow-hidden" style={{ background: 'var(--bg)' }}>
         <Header
           title={SCREEN_TITLES[screen]}
-          passport={passport}
-          onPassportChange={handlePassportChange}
           onRefresh={handleRefresh}
         />
 
