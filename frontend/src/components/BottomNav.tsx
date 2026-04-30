@@ -15,12 +15,13 @@ interface Props {
 export default function BottomNav({ active, onChange }: Props) {
   return (
     <nav
-      className="flex pb-8 pt-2 px-1 border-t"
+      className="flex pt-2 px-1 border-t"
       style={{
         background: 'var(--bg)',
         borderColor: 'var(--border)',
         backdropFilter: 'blur(24px) saturate(180%)',
         WebkitBackdropFilter: 'blur(24px) saturate(180%)',
+        paddingBottom: 'calc(env(safe-area-inset-bottom) + 8px)',
       }}
     >
       {tabs.map(tab => {

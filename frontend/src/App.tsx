@@ -300,7 +300,7 @@ export default function App() {
 
   return (
     <ThemeProvider>
-      <div className="h-screen flex flex-col overflow-hidden" style={{ background: 'var(--bg)' }}>
+      <div className="h-dvh flex flex-col overflow-hidden" style={{ background: 'var(--bg)' }}>
         <Header
           title={SCREEN_TITLES[screen]}
           onRefresh={handleRefresh}
