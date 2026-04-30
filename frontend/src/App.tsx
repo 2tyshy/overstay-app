@@ -207,10 +207,13 @@ export default function App() {
   }, [userId])
 
   // Re-sync when app regains visibility — picks up deletes/edits from other devices.
+  // Also immediately recalculates days_left locally so the number is fresh even
+  // before the DB response arrives (Telegram WebView can keep the app alive for days).
   useEffect(() => {
     if (!userId) return
     const onVisible = () => {
       if (document.visibilityState === 'visible') {
+        setEntries(prev => prev.map(e => ({ ...e, days_left: calcDaysLeft(e.deadline) })))
         fetchVisaEntries(userId).then(rows => {
           if (rows && rows.length > 0) {
             const dbEntries = rows.map(rowToEntry)
