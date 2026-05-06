@@ -28,7 +28,7 @@ export default function Header({ title, onRefresh, onAddEntry }: Props) {
         <button
           onClick={onRefresh}
           aria-label="Обновить данные"
-          className="p-1.5 rounded-lg transition-colors active:scale-90"
+          className="w-11 h-11 rounded-lg transition-colors active:scale-90 flex items-center justify-center"
           style={{ color: 'var(--text3)' }}
           title="Обновить"
         >
@@ -38,7 +38,7 @@ export default function Header({ title, onRefresh, onAddEntry }: Props) {
           <button
             onClick={onAddEntry}
             aria-label="Добавить новый въезд"
-            className="px-2.5 py-1.5 rounded-lg border flex items-center gap-1.5 transition-colors active:scale-95"
+            className="h-11 px-2.5 rounded-lg border flex items-center gap-1.5 transition-colors active:scale-95"
             style={{ color: 'var(--text2)', borderColor: 'var(--border)' }}
             title="Добавить въезд"
           >
