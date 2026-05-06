@@ -7,6 +7,7 @@
 // VITE_GEMINI_API_KEY is no longer used in production — key is in Edge Function secrets.
 
 const LS_USER_KEY = 'overstay_gemini_key'
+const LS_AUTH_TOKEN = 'overstay_auth_token'
 const MODEL = 'gemini-2.5-flash'
 const GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta/models'
 
@@ -24,6 +25,15 @@ export function getGeminiKey(): string | null {
     if (userKey && userKey.trim()) return userKey.trim()
   } catch { /* localStorage might be blocked */ }
   return null
+}
+
+function getAuthToken(): string | null {
+  try {
+    const v = localStorage.getItem(LS_AUTH_TOKEN)
+    return v && v.trim() ? v.trim() : null
+  } catch {
+    return null
+  }
 }
 
 /** True when AI features are available (proxy configured or user key set). */
@@ -64,12 +74,13 @@ async function doFetch(body: object): Promise<Response> {
       body: JSON.stringify(body),
     })
   } else if (PROXY_URL) {
-    const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY ?? ''
+    const authToken = getAuthToken()
+    if (!authToken) throw Object.assign(new Error('no-auth-token'), { code: 'NO_KEY' }) as GeminiError
     return fetch(PROXY_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${anonKey}`,
+        'Authorization': `Bearer ${authToken}`,
       },
       body: JSON.stringify(body),
     })

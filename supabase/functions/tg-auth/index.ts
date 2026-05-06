@@ -19,6 +19,54 @@ async function createJWT(payload: Record<string, any>, secret: string): Promise<
   return `${message}.${signatureB64}`;
 }
 
+async function hmacSha256Raw(keyRaw: Uint8Array, message: string): Promise<Uint8Array> {
+  const key = await crypto.subtle.importKey(
+    "raw",
+    keyRaw,
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(message));
+  return new Uint8Array(sig);
+}
+
+function toHex(bytes: Uint8Array): string {
+  return Array.from(bytes).map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+function timingSafeEqualHex(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+}
+
+async function verifyTelegramInitData(initData: string, botToken: string): Promise<boolean> {
+  const params = new URLSearchParams(initData);
+  const hash = params.get("hash");
+  const authDate = params.get("auth_date");
+  if (!hash || !authDate) return false;
+
+  // Telegram recommends limiting the lifetime of initData.
+  const authDateSec = Number(authDate);
+  const nowSec = Math.floor(Date.now() / 1000);
+  if (!Number.isFinite(authDateSec) || nowSec - authDateSec > 24 * 60 * 60) return false;
+
+  const pairs: string[] = [];
+  for (const [k, v] of params.entries()) {
+    if (k === "hash") continue;
+    pairs.push(`${k}=${v}`);
+  }
+  pairs.sort();
+  const dataCheckString = pairs.join("\n");
+
+  // secret_key = HMAC_SHA256("WebAppData", bot_token)
+  const secretKey = await hmacSha256Raw(new TextEncoder().encode("WebAppData"), botToken);
+  const expected = toHex(await hmacSha256Raw(secretKey, dataCheckString));
+  return timingSafeEqualHex(expected, hash);
+}
+
 serve(async (req: Request) => {
   if (req.method !== "POST") {
     return new Response(JSON.stringify({ error: "Method not allowed" }), { status: 405 });
@@ -31,7 +79,17 @@ serve(async (req: Request) => {
       return new Response(JSON.stringify({ error: "Missing or invalid initData" }), { status: 400 });
     }
 
-    // Parse URL-encoded initData
+    const botToken = Deno.env.get("TELEGRAM_BOT_TOKEN");
+    if (!botToken) {
+      return new Response(JSON.stringify({ error: "TELEGRAM_BOT_TOKEN not configured" }), { status: 500 });
+    }
+
+    const verified = await verifyTelegramInitData(initData, botToken);
+    if (!verified) {
+      return new Response(JSON.stringify({ error: "Invalid Telegram initData signature" }), { status: 401 });
+    }
+
+    // Parse URL-encoded initData (safe after signature verification)
     const params = new URLSearchParams(initData);
     const userStr = params.get("user");
 

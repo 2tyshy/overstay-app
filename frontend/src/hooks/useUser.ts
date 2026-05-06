@@ -3,6 +3,8 @@ import { getOrCreateUser, setTelegramContext, updateUserTimezone } from '@/lib/s
 import { getTelegramId, getTelegramInitData } from '@/lib/telegram'
 import type { User, PassportCountry } from '@/types'
 
+const LS_AUTH_TOKEN = 'overstay_auth_token'
+
 async function fetchTelegramJWT(): Promise<string | null> {
   const initData = getTelegramInitData()
   if (!initData) return null
@@ -37,14 +39,21 @@ export function useUser(passportCountry: PassportCountry = 'RU') {
     async function init() {
       const telegramId = getTelegramId()
       if (!telegramId) {
-        setUser({ id: 'dev', telegram_id: 12345, passport_country: 'RU', created_at: '' })
+        if (import.meta.env.DEV) {
+          setUser({ id: 'dev', telegram_id: 12345, passport_country: 'RU', created_at: '' })
+        } else {
+          setUser(null)
+        }
         setLoading(false)
         return
       }
 
       // Exchange Telegram initData for JWT (Sprint 3 auth infrastructure)
       // JWT is generated but not used with setSession() yet — Sprint 4 will add RLS
-      await fetchTelegramJWT()
+      const token = await fetchTelegramJWT()
+      if (token) {
+        try { localStorage.setItem(LS_AUTH_TOKEN, token) } catch { /* ignore */ }
+      }
 
       await setTelegramContext(telegramId)
       const u = await getOrCreateUser(telegramId, passportCountry)

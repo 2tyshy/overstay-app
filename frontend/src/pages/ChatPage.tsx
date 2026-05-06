@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
+import type { ReactNode } from 'react'
 import { Send, Trash2, Key, Info, Loader2 } from 'lucide-react'
 import { chat as geminiChat, hasAiAccess, setUserGeminiKey, clearUserGeminiKey, type GeminiMessage } from '@/lib/gemini'
 import { COUNTRY_NAMES, type VisaEntry, type PassportCountry } from '@/types'
@@ -72,15 +73,43 @@ ${history}
 - Если вопрос не про визы/поездки — вежливо верни к теме приложения.`
 }
 
-function renderLightMarkdown(text: string): string {
-  const escaped = text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-  return escaped
-    .replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>')
-    .replace(/(^|\n)[-•] (.+)/g, '$1• $2')
-    .replace(/`([^`]+)`/g, '<code style="font-family:var(--font-mono);font-size:0.9em;opacity:0.85">$1</code>')
+function renderInline(text: string): ReactNode[] {
+  const nodes: ReactNode[] = []
+  const re = /(\*\*([^*\n]+)\*\*|`([^`\n]+)`)/g
+  let last = 0
+  let m: RegExpExecArray | null = null
+  while ((m = re.exec(text)) !== null) {
+    if (m.index > last) nodes.push(text.slice(last, m.index))
+    if (m[2]) nodes.push(<strong key={`b-${m.index}`}>{m[2]}</strong>)
+    else if (m[3]) {
+      nodes.push(
+        <code key={`c-${m.index}`} style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9em', opacity: 0.85 }}>
+          {m[3]}
+        </code>
+      )
+    }
+    last = re.lastIndex
+  }
+  if (last < text.length) nodes.push(text.slice(last))
+  return nodes
+}
+
+function renderLightMarkdown(text: string): ReactNode {
+  const lines = text.split('\n')
+  return (
+    <>
+      {lines.map((line, idx) => {
+        const bullet = /^[-•]\s+/.test(line)
+        const content = bullet ? line.replace(/^[-•]\s+/, '') : line
+        return (
+          <div key={`ln-${idx}`}>
+            {bullet ? '• ' : ''}
+            {renderInline(content)}
+          </div>
+        )
+      })}
+    </>
+  )
 }
 
 function MessageBubble({ msg }: { msg: ChatMsg }) {
@@ -98,8 +127,9 @@ function MessageBubble({ msg }: { msg: ChatMsg }) {
       >
         <div
           className="text-[13px] leading-relaxed whitespace-pre-wrap break-words"
-          dangerouslySetInnerHTML={{ __html: renderLightMarkdown(msg.content) }}
-        />
+        >
+          {renderLightMarkdown(msg.content)}
+        </div>
       </div>
     </div>
   )
