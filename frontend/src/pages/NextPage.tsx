@@ -98,6 +98,7 @@ export default function NextPage({ entries, passport }: Props) {
         {filterCountry && (
           <button
             onClick={() => setFilterCountry(null)}
+            aria-label={`Сбросить фильтр страны ${filterCountry}`}
             className="flex items-center gap-1 px-1.5 py-0.5 rounded border transition-colors active:opacity-70"
             style={{ borderColor: 'var(--border)', background: 'var(--bg2)', color: 'var(--text2)', letterSpacing: '0.04em' }}
           >
@@ -107,7 +108,7 @@ export default function NextPage({ entries, passport }: Props) {
         )}
         <span className="flex-1 h-px" style={{ background: 'var(--border)' }} />
         {!schemesLoading && (
-          <button onClick={refetch} className="opacity-40 active:opacity-100 transition-opacity">
+          <button onClick={refetch} aria-label="Обновить список визаранов" className="opacity-40 active:opacity-100 transition-opacity">
             <RefreshCw size={11} />
           </button>
         )}

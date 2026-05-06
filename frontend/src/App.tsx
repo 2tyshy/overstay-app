@@ -307,6 +307,7 @@ export default function App() {
         <Header
           title={SCREEN_TITLES[screen]}
           onRefresh={handleRefresh}
+          onAddEntry={() => { setEditEntry(null); setEntrySheetOpen(true) }}
         />
 
         <div className="flex-1 overflow-hidden">

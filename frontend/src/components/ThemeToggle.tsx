@@ -6,6 +6,7 @@ export default function ThemeToggle() {
   return (
     <button
       onClick={toggle}
+      aria-label={theme === 'light' ? 'Переключить на тёмную тему' : 'Переключить на светлую тему'}
       className="w-[44px] h-[24px] rounded-full border flex items-center p-0.5 transition-all duration-300"
       style={{ background: 'var(--bg3)', borderColor: 'var(--border)' }}
     >

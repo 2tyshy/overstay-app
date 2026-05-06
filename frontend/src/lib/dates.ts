@@ -66,13 +66,13 @@ export function effectiveDeadline(
   return { deadline: visaEnd, maxDays: Math.max(1, daysBetween(entryDate, visaEnd)) }
 }
 
-// Days remaining until the deadline (exclusive of today, inclusive of deadline).
-// If today IS the deadline: 0 (leave today). Matches bot/DB formula: deadline - today.
+// Days remaining until the deadline (inclusive of today and deadline).
+// If today IS the deadline: 1 day left.
 export function calcDaysLeft(deadline: string): number {
   const dl = parseLocalDate(deadline)
   dl.setHours(0, 0, 0, 0)
   const today = todayLocal()
-  const diff = Math.floor((dl.getTime() - today.getTime()) / 86400000)
+  const diff = Math.floor((dl.getTime() - today.getTime()) / 86400000) + 1
   return Math.max(0, diff)
 }
 

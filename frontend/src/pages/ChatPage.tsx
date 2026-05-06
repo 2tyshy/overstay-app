@@ -208,6 +208,7 @@ export default function ChatPage({ passport, entries, prefill }: Props) {
         {messages.length > 0 && (
           <button
             onClick={clearHistory}
+            aria-label="Очистить историю чата"
             className="p-1.5 rounded transition-colors active:scale-90"
             style={{ color: 'var(--text3)' }}
           >
@@ -216,6 +217,7 @@ export default function ChatPage({ passport, entries, prefill }: Props) {
         )}
         <button
           onClick={() => setKeyMode(p => !p)}
+          aria-label="Открыть настройки Gemini API ключа"
           className="p-1.5 rounded transition-colors active:scale-90"
           style={{ color: hasKey ? 'var(--text3)' : 'var(--alert-text)' }}
         >
@@ -344,6 +346,7 @@ export default function ChatPage({ passport, entries, prefill }: Props) {
         />
         <button
           onClick={() => send(input)}
+          aria-label="Отправить сообщение"
           disabled={!input.trim() || sending || !hasKey}
           className="w-10 h-10 rounded-[10px] flex items-center justify-center transition-all active:scale-[0.92] disabled:opacity-30 shrink-0"
           style={{ background: 'var(--text1)', color: 'var(--bg)' }}

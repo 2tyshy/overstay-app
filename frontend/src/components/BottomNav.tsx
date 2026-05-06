@@ -31,6 +31,7 @@ export default function BottomNav({ active, onChange }: Props) {
           <button
             key={tab.id}
             onClick={() => onChange(tab.id)}
+            aria-label={`Открыть вкладку: ${tab.label}`}
             className="flex-1 flex flex-col items-center gap-1 py-1.5 relative"
             style={{ color: isActive ? 'var(--text1)' : 'var(--text3)' }}
           >

@@ -1,12 +1,13 @@
-import { RefreshCw } from 'lucide-react'
+import { Plus, RefreshCw } from 'lucide-react'
 import ThemeToggle from './ThemeToggle'
 
 interface Props {
   title: string
   onRefresh: () => void
+  onAddEntry?: () => void
 }
 
-export default function Header({ title, onRefresh }: Props) {
+export default function Header({ title, onRefresh, onAddEntry }: Props) {
   return (
     <div className="flex items-center justify-between px-[22px] pt-3.5 pb-0 shrink-0">
       <div className="flex flex-col">
@@ -26,12 +27,27 @@ export default function Header({ title, onRefresh }: Props) {
       <div className="flex items-center gap-2">
         <button
           onClick={onRefresh}
+          aria-label="Обновить данные"
           className="p-1.5 rounded-lg transition-colors active:scale-90"
           style={{ color: 'var(--text3)' }}
           title="Обновить"
         >
           <RefreshCw size={16} strokeWidth={1.5} />
         </button>
+        {onAddEntry && (
+          <button
+            onClick={onAddEntry}
+            aria-label="Добавить новый въезд"
+            className="px-2.5 py-1.5 rounded-lg border flex items-center gap-1.5 transition-colors active:scale-95"
+            style={{ color: 'var(--text2)', borderColor: 'var(--border)' }}
+            title="Добавить въезд"
+          >
+            <Plus size={14} strokeWidth={1.5} />
+            <span className="font-mono text-[9px] uppercase" style={{ letterSpacing: '0.12em' }}>
+              Въезд
+            </span>
+          </button>
+        )}
         <ThemeToggle />
       </div>
     </div>
