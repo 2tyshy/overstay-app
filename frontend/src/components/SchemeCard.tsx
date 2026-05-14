@@ -15,11 +15,21 @@ interface Props {
   currentCountry?: string
 }
 
+function voteAgo(iso: string | null | undefined): string | null {
+  if (!iso) return null
+  const diff = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000)
+  if (diff < 1) return 'сегодня'
+  if (diff < 30) return `${diff} ${diff === 1 ? 'день' : diff < 5 ? 'дня' : 'дней'} назад`
+  const months = Math.floor(diff / 30)
+  return `${months} ${months === 1 ? 'месяц' : months < 5 ? 'месяца' : 'месяцев'} назад`
+}
+
 export default function SchemeCard({ scheme, index, userVote, onVote, onEdit, onDelete, userId, commentCount = 0, currentCountry }: Props) {
   const isAuthor = userId && scheme.author_id === userId
   const months = ['ЯНВ','ФЕВ','МАР','АПР','МАЙ','ИЮН','ИЮЛ','АВГ','СЕН','ОКТ','НОЯ','ДЕК']
   const d = new Date(scheme.verified_at)
   const dateTag = `${months[d.getMonth()]} ${d.getFullYear()}`
+  const lastVoteHint = voteAgo(scheme.last_voted_at)
 
   const [commentsOpen, setCommentsOpen] = useState(false)
   const [liveCount, setLiveCount] = useState<number | null>(null)
@@ -72,6 +82,12 @@ export default function SchemeCard({ scheme, index, userVote, onVote, onEdit, on
           {scheme.duration_hours != null && <Tag>~{scheme.duration_hours > 48 ? `${Math.round(scheme.duration_hours / 24)} дн` : `${scheme.duration_hours}ч`}</Tag>}
           <Tag>{dateTag}</Tag>
         </div>
+
+        {lastVoteHint && (
+          <p className="font-mono text-[9px] mb-2" style={{ color: 'var(--text4)' }}>
+            🔔 последний голос: {lastVoteHint}
+          </p>
+        )}
 
         <div className="flex gap-1.5 pt-2.5 border-t" style={{ borderColor: 'var(--border)' }}>
           <VoteBtn emoji="👍" count={scheme.works_count} active={userVote === 'works'} type="works" onClick={() => onVote(scheme.id, 'works')} />

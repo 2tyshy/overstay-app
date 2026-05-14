@@ -36,6 +36,7 @@ export interface Scheme {
   verified_at: string
   works_count: number
   broken_count: number
+  last_voted_at?: string | null
   created_at: string
 }
 
