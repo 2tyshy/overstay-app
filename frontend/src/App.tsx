@@ -288,7 +288,11 @@ export default function App() {
       showToast('Запись обновлена', 'success')
     } else {
       setEntries(prev => [newEntry, ...prev])
-      showToast('Запись добавлена', 'success')
+      if (entries.length === 0) {
+        showToast('🔔 Бот напомнит за 7, 3 и 1 день до дедлайна', 'success')
+      } else {
+        showToast('Запись добавлена', 'success')
+      }
     }
     // Mirror to Supabase so the bot (and /check, and the daily cron) sees it.
     // Fire-and-forget: UI is already updated, network latency shouldn't block.
