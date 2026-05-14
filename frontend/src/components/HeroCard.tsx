@@ -7,10 +7,18 @@ interface Props {
   onClick?: () => void
 }
 
+function notifyHint(daysLeft: number): string | null {
+  if (daysLeft <= 0) return null
+  const upcoming = ([7, 3, 1] as const).filter(t => daysLeft > t)
+  if (upcoming.length === 0) return null
+  return `🔔 бот уведомит за ${upcoming.join(', ')} ${upcoming.length === 1 ? 'день' : 'дня/дней'} · в 10:00 по вашему TZ`
+}
+
 export default function HeroCard({ entry, onClick }: Props) {
   const isExpired = entry.days_left === 0
   const risk = isExpired ? 'danger' as const : getRiskLevel(entry.days_left, entry.max_days)
   const usedDays = Math.max(0, entry.max_days - entry.days_left)
+  const hint = notifyHint(entry.days_left)
 
   const riskLabel = isExpired ? 'ИСТЕКЛО' : risk === 'safe' ? 'ОК' : risk === 'warn' ? 'СКОРО' : 'СРОЧНО'
   const badgeColor = risk === 'safe' ? 'var(--text3)' : 'var(--alert-text)'
@@ -77,6 +85,15 @@ export default function HeroCard({ entry, onClick }: Props) {
           <div className="text-[13px] font-medium" style={{ color: 'var(--text2)' }}>{usedDays} / {entry.max_days} дн</div>
         </div>
       </div>
+
+      {hint && (
+        <div
+          className="font-mono text-[9px] mt-3.5 pt-3 border-t"
+          style={{ color: 'var(--text4)', borderColor: 'var(--border)', letterSpacing: '0.02em' }}
+        >
+          {hint}
+        </div>
+      )}
     </div>
   )
 }
