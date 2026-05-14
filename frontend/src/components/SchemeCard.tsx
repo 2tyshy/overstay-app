@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { MessageSquare, Pencil, Trash2 } from 'lucide-react'
-import { COUNTRY_FLAGS, type Scheme } from '@/types'
+import { MessageSquare, Pencil, Share2, Trash2 } from 'lucide-react'
+import { COUNTRY_FLAGS, COUNTRY_NAMES, type Scheme } from '@/types'
 import SchemeCommentsThread from './SchemeCommentsThread'
 
 interface Props {
@@ -13,6 +13,33 @@ interface Props {
   userId?: string
   commentCount?: number
   currentCountry?: string
+}
+
+function shareScheme(scheme: Scheme) {
+  const from = COUNTRY_NAMES[scheme.from_country] ?? scheme.from_country
+  const to = COUNTRY_NAMES[scheme.to_country] ?? scheme.to_country
+  const crossing = scheme.border_crossing ? ` через ${scheme.border_crossing}` : ''
+  const cost = scheme.cost_usd != null ? `💵 ~$${scheme.cost_usd}` : ''
+  const dur = scheme.duration_hours != null
+    ? `⏱ ~${scheme.duration_hours > 48 ? `${Math.round(scheme.duration_hours / 24)} дн` : `${scheme.duration_hours}ч`}`
+    : ''
+  const meta = [cost, dur].filter(Boolean).join(' · ')
+  const text = [
+    `🗺 Визаран: ${from}→${to}${crossing}`,
+    meta,
+    `✅ ${scheme.works_count} подтверждений`,
+    '',
+    'Найдено в Overstay',
+  ].filter(s => s !== undefined && s !== '').join('\n')
+
+  const tg = (window as Window & { Telegram?: { WebApp?: { openTelegramLink?: (url: string) => void } } }).Telegram?.WebApp
+  if (tg?.openTelegramLink) {
+    tg.openTelegramLink(`https://t.me/share/url?url=https://t.me/overstay_bot&text=${encodeURIComponent(text)}`)
+  } else if (navigator.share) {
+    navigator.share({ text }).catch(() => undefined)
+  } else {
+    navigator.clipboard?.writeText(text).catch(() => undefined)
+  }
 }
 
 function voteAgo(iso: string | null | undefined): string | null {
@@ -97,24 +124,33 @@ export default function SchemeCard({ scheme, index, userVote, onVote, onEdit, on
             active={commentsOpen}
             onClick={() => setCommentsOpen(o => !o)}
           />
-          {isAuthor && (
-            <div className="flex gap-1 ml-auto">
-              <button
-                onClick={() => onEdit?.(scheme)}
-                className="flex items-center justify-center w-7 h-7 rounded border transition-colors"
-                style={{ borderColor: 'var(--border)', color: 'var(--text3)' }}
-              >
-                <Pencil size={11} strokeWidth={1.5} />
-              </button>
-              <button
-                onClick={() => { if (window.confirm('Удалить схему?')) onDelete?.(scheme.id) }}
-                className="flex items-center justify-center w-7 h-7 rounded border transition-colors"
-                style={{ borderColor: 'var(--border)', color: 'var(--danger-text)' }}
-              >
-                <Trash2 size={11} strokeWidth={1.5} />
-              </button>
-            </div>
-          )}
+          <div className="flex gap-1 ml-auto">
+            <button
+              onClick={() => shareScheme(scheme)}
+              className="flex items-center justify-center w-7 h-7 rounded border transition-colors"
+              style={{ borderColor: 'var(--border)', color: 'var(--text3)' }}
+            >
+              <Share2 size={11} strokeWidth={1.5} />
+            </button>
+            {isAuthor && (
+              <>
+                <button
+                  onClick={() => onEdit?.(scheme)}
+                  className="flex items-center justify-center w-7 h-7 rounded border transition-colors"
+                  style={{ borderColor: 'var(--border)', color: 'var(--text3)' }}
+                >
+                  <Pencil size={11} strokeWidth={1.5} />
+                </button>
+                <button
+                  onClick={() => { if (window.confirm('Удалить схему?')) onDelete?.(scheme.id) }}
+                  className="flex items-center justify-center w-7 h-7 rounded border transition-colors"
+                  style={{ borderColor: 'var(--border)', color: 'var(--danger-text)' }}
+                >
+                  <Trash2 size={11} strokeWidth={1.5} />
+                </button>
+              </>
+            )}
+          </div>
         </div>
 
         {commentsOpen && (
