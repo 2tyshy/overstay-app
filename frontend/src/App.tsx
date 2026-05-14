@@ -342,6 +342,7 @@ export default function App() {
               onStamp={() => setEntrySheetOpen(true)}
               onEntryClick={setDetailEntry}
               onCityClick={handleCityClick}
+              onOpenChat={() => setScreen('chat')}
             />
           )}
           {screen === 'next' && <NextPage entries={sorted} passport={passport} />}

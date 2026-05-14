@@ -11,9 +11,10 @@ interface Props {
   onStamp: () => void
   onEntryClick: (entry: VisaEntry) => void
   onCityClick?: (city: string, country: string) => void
+  onOpenChat?: () => void
 }
 
-export default function StatusPage({ entries, onStamp, onEntryClick, onCityClick }: Props) {
+export default function StatusPage({ entries, onStamp, onEntryClick, onCityClick, onOpenChat }: Props) {
   const current = entries[0]
   const history = entries.slice(1)
 
@@ -39,6 +40,16 @@ export default function StatusPage({ entries, onStamp, onEntryClick, onCityClick
             </div>
           ) : (
             <AlertStrip entry={current} />
+          )}
+
+          {current.days_left > 0 && current.days_left <= 14 && (
+            <button
+              onClick={onOpenChat}
+              className="w-full text-left font-mono text-[10px] border rounded px-3 py-2 mb-2 transition-opacity active:opacity-60"
+              style={{ color: 'var(--text3)', borderColor: 'var(--border)' }}
+            >
+              💬 Спроси AI о схемах визарана →
+            </button>
           )}
 
           <CountryCard countryCode={current.country} onCityClick={onCityClick} />
