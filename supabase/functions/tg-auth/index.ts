@@ -51,7 +51,7 @@ async function verifyTelegramInitData(initData: string, botToken: string): Promi
   // Telegram recommends limiting the lifetime of initData.
   const authDateSec = Number(authDate);
   const nowSec = Math.floor(Date.now() / 1000);
-  if (!Number.isFinite(authDateSec) || nowSec - authDateSec > 24 * 60 * 60) return false;
+  if (!Number.isFinite(authDateSec) || nowSec - authDateSec > 5 * 60) return false;
 
   const pairs: string[] = [];
   for (const [k, v] of params.entries()) {

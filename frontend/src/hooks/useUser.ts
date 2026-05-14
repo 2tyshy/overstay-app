@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { getOrCreateUser, setTelegramContext, updateUserTimezone } from '@/lib/supabase'
+import { getOrCreateUser, setTelegramContext, updateUserTimezone, supabase } from '@/lib/supabase'
 import { getTelegramId, getTelegramInitData } from '@/lib/telegram'
 import type { User, PassportCountry } from '@/types'
 
@@ -40,7 +40,7 @@ export function useUser(passportCountry: PassportCountry = 'RU') {
       const telegramId = getTelegramId()
       if (!telegramId) {
         if (import.meta.env.DEV) {
-          setUser({ id: 'dev', telegram_id: 12345, passport_country: 'RU', created_at: '' })
+          setUser({ id: 'dev', telegram_id: 0, passport_country: 'RU', created_at: '' })
         } else {
           setUser(null)
         }
@@ -48,11 +48,14 @@ export function useUser(passportCountry: PassportCountry = 'RU') {
         return
       }
 
-      // Exchange Telegram initData for JWT (Sprint 3 auth infrastructure)
-      // JWT is generated but not used with setSession() yet — Sprint 4 will add RLS
       const token = await fetchTelegramJWT()
       if (token) {
-        try { localStorage.setItem(LS_AUTH_TOKEN, token) } catch { /* ignore */ }
+        try { localStorage.setItem(LS_AUTH_TOKEN, token) } catch { }
+        try {
+          await supabase.auth.setSession({ access_token: token, refresh_token: token })
+        } catch {
+          // Silently ignore — happens in dev if APP_JWT_SECRET != SUPABASE_JWT_SECRET
+        }
       }
 
       await setTelegramContext(telegramId)

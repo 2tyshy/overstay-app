@@ -19,7 +19,7 @@ export function formatReminderMessage(entry: any, daysLeft: number, schemes: any
   const flag = getFlag(entry.country)
 
   let msg = `${emoji} <b>Осталось ${daysLeft} ${pluralDays(daysLeft)} в ${flag}</b>\n\n`
-  msg += `Дедлайн: <b>${entry.deadline}</b>\n\n`
+  msg += `Дедлайн: <b>${escapeHtml(entry.deadline)}</b>\n\n`
 
   if (schemes.length > 0) {
     msg += `🗺 <b>Топ схемы для визарана:</b>\n\n`

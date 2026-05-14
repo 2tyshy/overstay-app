@@ -18,7 +18,7 @@ const ALLOWED_ORIGINS = new Set(
 )
 
 function corsHeaders(origin: string | null): Record<string, string> {
-  const allowOrigin = origin && (ALLOWED_ORIGINS.size === 0 || ALLOWED_ORIGINS.has(origin))
+  const allowOrigin = origin && ALLOWED_ORIGINS.size > 0 && ALLOWED_ORIGINS.has(origin)
     ? origin
     : 'null'
   return {
@@ -114,13 +114,6 @@ serve(async (req) => {
 
   let body: unknown
   try {
-    const len = Number(req.headers.get('content-length') ?? 0)
-    if (Number.isFinite(len) && len > MAX_BODY_BYTES) {
-      return new Response(JSON.stringify({ error: 'Request body too large' }), {
-        status: 413,
-        headers: { ...CORS, 'Content-Type': 'application/json' },
-      })
-    }
     body = await req.json()
   } catch {
     return new Response(JSON.stringify({ error: 'Invalid JSON body' }), {
